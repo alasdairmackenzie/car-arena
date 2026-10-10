@@ -7,20 +7,30 @@
     "node": ">=24"
   },
   "scripts": {
-    "dev": "vite --host 127.0.0.1",
+    "dev": "concurrently -k -n server,web \"npm:dev:server\" \"npm:dev:client\"",
+    "dev:client": "vite --host 127.0.0.1",
+    "dev:server": "tsx watch src/server/main.ts",
+    "start:server": "tsx src/server/main.ts",
     "build": "npm run typecheck && vite build",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test"
   },
   "dependencies": {
+    "@colyseus/core": "0.18.18",
+    "@colyseus/schema": "5.0.36",
+    "@colyseus/sdk": "0.18.5",
+    "@colyseus/ws-transport": "0.18.4",
     "matter-js": "0.20.0",
     "phaser": "3.90.0"
   },
   "devDependencies": {
     "@playwright/test": "1.64.0",
+    "@types/express": "^5.0.0",
     "@types/matter-js": "^0.20.2",
     "@types/node": "^24.0.0",
+    "concurrently": "10.0.6",
+    "tsx": "4.23.15",
     "typescript": "7.0.2",
     "vite": "8.3.4",
     "vitest": "5.0.3"

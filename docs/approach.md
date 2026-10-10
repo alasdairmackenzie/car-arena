@@ -82,3 +82,21 @@ Desktop keyboard controls, a fixed arena and generated geometric artwork.
 Responsive scaling is included, but touch/gamepad controls, matchmaking UI,
 authentication, persistence and production internet hosting are not milestone 1.
 No external artwork or asset licences are needed.
+
+## Implemented through milestone 2
+
+The normal page now joins a Colyseus room, capped at eight players. The original
+local playground is retained explicitly at `?solo=1`. Inputs are sent at 20 Hz,
+validated and expired after 500 ms without refresh. The room uses Colyseus's
+fixed-timestep scheduler at 60 Hz and schema patches at 20 Hz.
+
+Rendering blends toward each new authoritative snapshot over 50 ms, using the
+shortest angular path. Large jumps (such as reset) snap instead of interpolating
+across the arena. This is simple smoothing, not extrapolation, rollback or local
+prediction. Spawn positions are selected away from current cars.
+
+Tests run dedicated local servers and verify two independent browsers, room
+identity, independent controls, remote motion, stopped-state convergence,
+ramming, safe reset, leaving, failed joins and disconnect feedback. The Phaser
+browser bundle is intentionally larger than a typical website bundle; asset
+and engine bundle optimisation is future work.

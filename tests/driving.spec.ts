@@ -3,7 +3,7 @@ import { expect, test } from '@playwright/test';
 test('drive, steer, brake and reset in a real browser', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.message));
-  await page.goto('/');
+  await page.goto('/?solo=1');
   const arena = page.getByRole('region', { name: 'Driving arena' });
   await expect(arena).toHaveAttribute('data-players', '1');
   await arena.click();
@@ -23,7 +23,7 @@ test('drive, steer, brake and reset in a real browser', async ({ page }) => {
 });
 
 test('releasing focus clears held controls', async ({ page }) => {
-  await page.goto('/');
+  await page.goto('/?solo=1');
   const arena = page.getByRole('region', { name: 'Driving arena' });
   await expect(arena).toHaveAttribute('data-players', '1');
   await arena.click();

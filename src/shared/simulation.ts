@@ -22,6 +22,15 @@ export interface CarInput {
   handbrake: boolean;
 }
 
+export function isCarInput(value: unknown): value is CarInput {
+  if (typeof value !== 'object' || value === null) return false;
+  return 'throttle' in value && typeof value.throttle === 'number' &&
+    Number.isFinite(value.throttle) && Math.abs(value.throttle) <= 1 &&
+    'steering' in value && typeof value.steering === 'number' &&
+    Number.isFinite(value.steering) && Math.abs(value.steering) <= 1 &&
+    'handbrake' in value && typeof value.handbrake === 'boolean';
+}
+
 export const idleInput = (): CarInput => ({
   throttle: 0, steering: 0, handbrake: false,
 });
@@ -72,11 +81,7 @@ export class Simulation {
   }
 
   setInput(id: string, input: CarInput): void {
-    if (!Number.isFinite(input.throttle) || Math.abs(input.throttle) > 1 ||
-        !Number.isFinite(input.steering) || Math.abs(input.steering) > 1 ||
-        typeof input.handbrake !== 'boolean') {
-      throw new Error('Invalid car input');
-    }
+    if (!isCarInput(input)) throw new Error('Invalid car input');
     this.requireCar(id).input = { ...input };
   }
 
