@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#101820" />
+    <title>Car Arena</title>
+  </head>
+  <body>
+    <main>
+      <header>
+        <div><p class="eyebrow">DRIVING LAB / 01</p><h1>Car Arena</h1></div>
+        <div class="telemetry"><span id="mode">SOLO PLAYGROUND</span><output id="speed" aria-label="Speed">0 px/s</output></div>
+      </header>
+      <div id="game" tabindex="0" role="region" aria-label="Driving arena" aria-describedby="controls"></div>
+      <footer>
+        <p id="controls"><kbd>W</kbd><kbd>S</kbd> throttle / reverse &nbsp; <kbd>A</kbd><kbd>D</kbd> steer &nbsp; <kbd>Space</kbd> handbrake<br />Arrow keys also work. Click the arena to drive.</p>
+        <button id="reset" type="button">Reset car <kbd>R</kbd></button>
+      </footer>
+      <p id="status" role="status">Loading driving playground...</p>
+      <p id="error" role="alert" hidden></p>
+    </main>
+    <script type="module" src="/src/client/main.ts"></script>
+  </body>
+</html>
