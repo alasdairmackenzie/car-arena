@@ -193,11 +193,15 @@ button; the timer and score remain at the top.
 Desktop also shows FIRE above the health panel; hold it with the mouse or use F.
 FIRE remains visible but disabled in solo driving practice, which has no weapons.
 
-Hold anywhere on the larger left direction pad to drive straight; that touch
-becomes the steering centre. Slide left/right to steer, with a 6px dead zone
-and gradual steering up to full lock at 48px. Pull down 44px from the starting
-touch to brake then reverse; move back above 32px to drive forward again.
-Release to coast. There are no
+Touch anywhere on the larger left direction pad to set its centre, then slide
+towards the screen direction you want to drive. Up means screen-up and down
+means screen-down, regardless of the car's heading. The car steers smoothly
+towards that direction with reduced acceleration during sharp turns.
+A 6px dead zone coasts; displacement increases throttle up to 48px.
+Release to coast. When nearly stopped and pointing behind the car, the stick
+automatically backs up towards that direction so a wall cannot pin the nose.
+Backing up continues until you release/centre the stick or point ahead again.
+Keyboard driving remains car-relative. There are no
 separate GO/REV or DRIFT buttons. Hold FIRE for the gun alongside the direction
 pad. Hard forward turns automatically reduce rear grip gradually above
 180 px/s, reaching the full subtle effect at 360 px/s with full steering.

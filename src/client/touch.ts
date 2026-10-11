@@ -6,8 +6,8 @@ export class TouchInput {
   private readonly actions = new Map<number, Action>();
   private steeringPointer?: number;
   private steeringOrigin = { x: 0, y: 0 };
-  private steering = 0;
-  private throttle = 0;
+  private direction = { x: 0, y: 0 };
+  private backingUp = false;
   private readonly heldKeys = new Set<string>();
   private enabled = false;
   private readonly buttons: HTMLButtonElement[];
@@ -42,12 +42,20 @@ export class TouchInput {
     this.pad.setAttribute('aria-disabled', String(!enabled));
   }
 
-  read(): CarInput {
+  read(angle: number, speed: number): CarInput {
     if (!this.enabled || document.hidden) return idleInput();
     const active = new Set(this.actions.values());
+    const strength = Math.min(1, Math.max(0, Math.hypot(this.direction.x, this.direction.y) - 6) / 42);
+    const desired = Math.atan2(this.direction.y, this.direction.x);
+    const turn = Math.atan2(Math.sin(desired - angle), Math.cos(desired - angle));
+    if (strength === 0 || Math.abs(turn) < Math.PI / 2) this.backingUp = false;
+    else if (speed < 35 && Math.abs(turn) > Math.PI * 0.75) this.backingUp = true;
+    const steeringTurn = this.backingUp
+      ? -Math.atan2(Math.sin(desired - angle - Math.PI), Math.cos(desired - angle - Math.PI))
+      : turn;
     return {
-      throttle: this.throttle,
-      steering: this.steering,
+      throttle: this.backingUp ? -strength : strength * (0.3 + 0.7 * Math.max(0, Math.cos(turn))),
+      steering: strength > 0 ? Math.max(-1, Math.min(1, steeringTurn * 2)) : 0,
       handbrake: false,
       fire: active.has('fire'),
     };
@@ -82,30 +90,28 @@ export class TouchInput {
     const rect = this.pad.getBoundingClientRect();
     const dx = x - this.steeringOrigin.x;
     const dy = y - this.steeringOrigin.y;
-    const deadZone = 6;
-    const travel = 48;
-    const turn = Math.min(1, Math.max(0, Math.abs(dx) - deadZone) / (travel - deadZone));
-    this.throttle = dy >= (this.throttle < 0 ? 32 : 44) ? -1 : 1;
-    this.setSteering(Math.sign(dx) * turn ** 1.5);
+    this.setDirection(dx, dy);
     const knobLimit = (rect.width - this.knob.offsetWidth) / 2;
     const knobX = Math.max(-knobLimit, Math.min(knobLimit, x - rect.x - rect.width / 2));
     const knobY = Math.max(-knobLimit, Math.min(knobLimit, y - rect.y - rect.height / 2));
     this.knob.style.transform = `translate(${knobX}px, ${knobY}px)`;
   }
 
-  private setSteering(value: number): void {
-    this.steering = value;
-    this.knob.style.transform = `translateX(${value * 30}px)`;
-    this.pad.setAttribute('aria-valuenow', String(Math.round(value * 100)));
-    this.pad.setAttribute('aria-valuetext', `${this.throttle < 0 ? 'Reverse' : this.throttle > 0 ? 'Forward' : 'Coasting'}, ${value < 0 ? 'left' : value > 0 ? 'right' : 'straight'}`);
+  private setDirection(x: number, y: number): void {
+    this.direction = { x, y };
+    const distance = Math.hypot(x, y);
+    if (distance <= 6) this.backingUp = false;
+    this.knob.style.transform = `translate(${x * Math.min(1, 40 / Math.max(1, distance))}px, ${y * Math.min(1, 40 / Math.max(1, distance))}px)`;
+    this.pad.setAttribute('aria-valuenow', String(Math.round(Math.min(1, Math.max(0, distance - 6) / 42) * 100)));
+    this.pad.setAttribute('aria-valuetext', distance <= 6 ? 'Coasting'
+      : `Drive towards screen ${y < -6 ? 'up ' : y > 6 ? 'down ' : ''}${x < -6 ? 'left' : x > 6 ? 'right' : ''}`.trim());
   }
 
   private readonly release = (event: PointerEvent): void => {
     this.actions.delete(event.pointerId);
     if (event.pointerId === this.steeringPointer) {
       this.steeringPointer = undefined;
-      this.throttle = 0;
-      this.setSteering(0);
+      this.setDirection(0, 0);
     }
     for (const button of this.buttons) {
       button.classList.toggle('pressed', [...this.actions.values()].some(action => action === button.dataset.drive));
@@ -121,8 +127,10 @@ export class TouchInput {
   };
 
   private updateKeys(): void {
-    this.throttle = this.heldKeys.has('ArrowDown') ? -1 : this.heldKeys.size ? 1 : 0;
-    this.setSteering(Number(this.heldKeys.has('ArrowRight')) - Number(this.heldKeys.has('ArrowLeft')));
+    this.setDirection(
+      (Number(this.heldKeys.has('ArrowRight')) - Number(this.heldKeys.has('ArrowLeft'))) * 48,
+      (Number(this.heldKeys.has('ArrowDown')) - Number(this.heldKeys.has('ArrowUp'))) * 48,
+    );
   }
 
   private readonly keyUp = (event: KeyboardEvent): void => {
@@ -135,8 +143,7 @@ export class TouchInput {
     this.actions.clear();
     this.steeringPointer = undefined;
     this.heldKeys.clear();
-    this.throttle = 0;
-    this.setSteering(0);
+    this.setDirection(0, 0);
     for (const button of this.buttons) button.classList.remove('pressed');
   };
 

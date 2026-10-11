@@ -24,15 +24,17 @@ test('mobile touch driving, simultaneous steering, cancellation and rotation', a
     ];
     await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: touches });
     expect(pad.width).toBeGreaterThanOrEqual(120);
-    await expect(page.getByRole('slider', { name: 'Steering' })).toHaveAttribute('aria-valuetext', 'Forward, straight');
+    await expect(page.getByRole('slider', { name: 'Steering' })).toHaveAttribute('aria-valuetext', 'Coasting');
     touches[0].x += 4;
-    touches[0].y += 20;
+    touches[0].y -= 4;
     await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: touches });
-    await expect(page.getByRole('slider', { name: 'Steering' })).toHaveAttribute('aria-valuetext', 'Forward, straight');
+    await expect(page.getByRole('slider', { name: 'Steering' })).toHaveAttribute('aria-valuetext', 'Coasting');
+    touches[0].y -= 44;
+    await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: touches });
     await expect.poll(async () => Number(await arena.getAttribute('data-speed'))).toBeGreaterThan(40);
     touches[0].x += 20;
     await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: touches });
-    await expect(page.getByRole('slider', { name: 'Steering' })).toHaveAttribute('aria-valuenow', '28');
+    await expect(page.getByRole('slider', { name: 'Steering' })).toHaveAttribute('aria-valuetext', 'Drive towards screen up right');
     touches[0].x += 26;
     await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: touches });
     await expect(page.getByRole('slider', { name: 'Steering' })).toHaveAttribute('aria-valuenow', /[89]\d|100/);
@@ -42,19 +44,18 @@ test('mobile touch driving, simultaneous steering, cancellation and rotation', a
     await expect(page.locator('button.pressed')).toHaveCount(0);
     const reversePad = (await page.getByRole('slider', { name: 'Steering' }).boundingBox())!;
     const reverseTouches = [{ id: 3, x: reversePad.x + reversePad.width / 2, y: reversePad.y + reversePad.height / 2 }];
-    const reverseStart = Number(await arena.getAttribute('data-y'));
+    const downStart = Number(await arena.getAttribute('data-y'));
     await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: reverseTouches });
-    reverseTouches[0].y += 45;
+    reverseTouches[0].y += 48;
     await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: reverseTouches });
-    await expect(page.getByRole('slider', { name: 'Steering' })).toHaveAttribute('aria-valuetext', 'Reverse, straight');
-    reverseTouches[0].y -= 9;
-    await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: reverseTouches });
-    await expect(page.getByRole('slider', { name: 'Steering' })).toHaveAttribute('aria-valuetext', 'Reverse, straight');
+    await expect(page.getByRole('slider', { name: 'Steering' })).toHaveAttribute('aria-valuetext', 'Drive towards screen down');
+    await expect.poll(async () => Math.sin(Number(await arena.getAttribute('data-angle'))), { timeout: 15000 })
+      .toBeGreaterThan(0.9);
     await expect.poll(async () => Number(await arena.getAttribute('data-y')), { timeout: 10000 })
-      .toBeGreaterThan(reverseStart + 30);
-    reverseTouches[0].y -= 8;
+      .toBeGreaterThan(downStart + 30);
+    reverseTouches[0].y -= 48;
     await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: reverseTouches });
-    await expect(page.getByRole('slider', { name: 'Steering' })).toHaveAttribute('aria-valuetext', 'Forward, straight');
+    await expect(page.getByRole('slider', { name: 'Steering' })).toHaveAttribute('aria-valuetext', 'Coasting');
     await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await page.setViewportSize({ width: 844, height: 390 });
     await expect(arena).toHaveAttribute('data-camera', 'follow');
@@ -74,6 +75,31 @@ test('mobile touch driving, simultaneous steering, cancellation and rotation', a
     await page.getByRole('button', { name: 'Game menu', exact: true }).click();
     await expect(page.locator('#controls')).toBeVisible();
     expect(errors).toEqual([]);
+  } finally {
+    await context.close();
+  }
+});
+
+test('pulling away from a wall backs up instead of pinning the nose', async ({ browser }) => {
+  const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true, hasTouch: true });
+  try {
+    const page = await context.newPage();
+    await page.goto('/?solo=1');
+    await page.getByRole('button', { name: 'Play', exact: true }).click();
+    const arena = page.locator('#game');
+    const pad = (await page.getByRole('slider', { name: 'Steering' }).boundingBox())!;
+    const client = await context.newCDPSession(page);
+    const origin = { id: 1, x: pad.x + pad.width / 2, y: pad.y + pad.height / 2 };
+    await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [origin] });
+    await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...origin, y: origin.y - 48 }] });
+    await expect.poll(async () => Number(await arena.getAttribute('data-y')), { timeout: 10000 }).toBeLessThan(75);
+    await expect.poll(async () => Number(await arena.getAttribute('data-speed'))).toBeLessThan(10);
+    const wallY = Number(await arena.getAttribute('data-y'));
+    await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: [{ ...origin, y: origin.y + 48 }] });
+    await expect.poll(async () => Number(await arena.getAttribute('data-y'))).toBeGreaterThan(wallY + 100);
+    expect(Math.sin(Number(await arena.getAttribute('data-angle')))).toBeLessThan(-0.9);
+    await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    await expect(page.getByRole('slider', { name: 'Steering' })).toHaveAttribute('aria-valuetext', 'Coasting');
   } finally {
     await context.close();
   }
@@ -108,6 +134,12 @@ test('mobile countdown, replicated touch input and disabled spectator controls',
     await client.send('Input.dispatchTouchEvent', {
       type: 'touchStart', touchPoints: [
         { id: 1, x: go.x + go.width / 2, y: go.y + go.height / 2 },
+        { id: 2, x: fire.x + fire.width / 2, y: fire.y + fire.height / 2 },
+      ],
+    });
+    await client.send('Input.dispatchTouchEvent', {
+      type: 'touchMove', touchPoints: [
+        { id: 1, x: go.x + go.width / 2, y: go.y + go.height / 2 - 48 },
         { id: 2, x: fire.x + fire.width / 2, y: fire.y + fire.height / 2 },
       ],
     });

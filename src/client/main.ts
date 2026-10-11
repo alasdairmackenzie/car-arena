@@ -292,7 +292,8 @@ class ArenaScene extends Phaser.Scene {
     this.touchController.setEnabled(this.started && !menu.open && !errorDialog.open && (solo || Boolean(this.network?.connected && currentGame.phase === 'active' && currentOwn?.alive && !currentOwn.spectator)));
     if (solo) fireButton.disabled = true;
     const keyboard = this.inputController.read();
-    const touch = this.touchController.read();
+    const inputOwn = this.simulation?.snapshot()[0] ?? currentOwn;
+    const touch = this.touchController.read(inputOwn?.angle ?? 0, inputOwn?.speed ?? 0);
     const controls = {
       throttle: Math.max(-1, Math.min(1, keyboard.throttle + touch.throttle)),
       steering: Math.max(-1, Math.min(1, keyboard.steering + touch.steering)),
