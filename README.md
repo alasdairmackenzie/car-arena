@@ -57,7 +57,15 @@ help and game menus; switching menus pauses/resumes the appropriate track
 without playing both at once. Initial menu music needs a user interaction
 on browsers that block autoplay. `src/assets/gun.mp3` plays for newly observed
 nearby shots, fading with distance. The menu's Sound button mutes both music
-and effects; background tabs are muted. Returning to the lobby picker stops
+and effects. `src/assets/explode.mp3` plays once when a previously alive car is
+wrecked, fading with distance rather than replaying during its respawn countdown.
+Car-to-car contact starts randomly play `bash1.mp3` or `bash2.mp3`, including
+protected impacts; continuous contact and wall collisions do not trigger them.
+Wall contact starts play `thud.mp3`, including in solo practice. Holding against
+a wall does not repeat the sound, and walls still cause no damage.
+Each effect gets subtle random playback-rate variation: gunshots +/-4%,
+bashes/thuds +/-6%, explosions +/-3%. Music pitch and playback rate stay unchanged.
+Background tabs are muted. Returning to the lobby picker stops
 music, and leaving the page stops playback.
 **Mute music** is available in both the main and game menus and pauses only
 music, leaving gunshots enabled. **Unmute music** resumes the appropriate track.

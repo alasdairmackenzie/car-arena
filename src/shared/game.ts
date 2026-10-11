@@ -49,6 +49,8 @@ export function isRoundPhase(phase: string): phase is RoundPhase {
 export interface PlayerSnapshot extends CarSnapshot {
   bot: boolean;
   damageSequence: number;
+  collisionSequence: number;
+  wallCollisionSequence: number;
   damageReason: string;
   health: number;
   cores: number;

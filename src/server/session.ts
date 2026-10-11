@@ -20,6 +20,8 @@ interface Player {
   bot: boolean;
   botMemory?: BotMemory;
   damageSequence: number;
+  collisionSequence: number;
+  wallCollisionSequence: number;
   damageReason: string;
   health: number;
   cores: number;
@@ -79,7 +81,7 @@ export class ArenaSession {
     if ([...this.players.values()].filter(player => !player.bot).length >= MAX_CONNECTIONS) throw new Error('Room is full');
     if (this.players.has(id)) throw new Error(`Player already exists: ${id}`);
     this.players.set(id, {
-      bot: false, damageSequence: 0, damageReason: '', health: 0, cores: 0, respawnAt: 0,
+      bot: false, damageSequence: 0, collisionSequence: 0, wallCollisionSequence: 0, damageReason: '', health: 0, cores: 0, respawnAt: 0,
       protectedUntil: 0, nextShotAt: 0,
       lastInputAt: this.tick, input: idleInput(),
       pose: { id, x: 0, y: 0, angle: -Math.PI / 2, speed: 0, steering: 0 },
@@ -192,7 +194,7 @@ export class ArenaSession {
       players: [...this.players].map(([id, player]): PlayerSnapshot => ({
         ...player.pose, id, health: player.health, cores: player.cores,
         bot: player.bot,
-        damageSequence: player.damageSequence, damageReason: player.damageReason,
+        damageSequence: player.damageSequence, collisionSequence: player.collisionSequence, wallCollisionSequence: player.wallCollisionSequence, damageReason: player.damageReason,
         alive: player.health > 0,
         respawnTicks: player.health === 0 ? Math.max(0, player.respawnAt - this.tick) : 0,
         protectionTicks: Math.max(0, player.protectedUntil - this.tick),
@@ -227,9 +229,14 @@ export class ArenaSession {
       if (!pair.isActive) continue;
       const a = ids.get(pair.bodyA.id);
       const b = ids.get(pair.bodyB.id);
-      if (!a || !b) continue;
+      if (!a && !b) continue;
       contacts.add(pair.id);
       if (this.contacts.has(pair.id)) continue;
+      if (!a || !b) {
+        this.requirePlayer((a ?? b)!).wallCollisionSequence++;
+        continue;
+      }
+      this.requirePlayer(a).collisionSequence++;
       const one = before.get(a);
       const two = before.get(b);
       const va = velocities.get(a);
@@ -562,7 +569,7 @@ export class ArenaSession {
       const id = `bot-${this.nextId++}`;
       if (this.players.has(id)) continue;
       this.players.set(id, {
-        bot: true, damageSequence: 0, damageReason: '', health: 0, cores: 0, respawnAt: 0, protectedUntil: 0,
+        bot: true, damageSequence: 0, collisionSequence: 0, wallCollisionSequence: 0, damageReason: '', health: 0, cores: 0, respawnAt: 0, protectedUntil: 0,
         nextShotAt: 0, lastInputAt: this.tick, input: idleInput(),
         pose: { id, x: 0, y: 0, angle: -Math.PI / 2, speed: 0, steering: 0 },
         spectator: false, name: `Bot ${id.slice(4)}`, wins: 0,

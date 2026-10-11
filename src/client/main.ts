@@ -10,6 +10,10 @@ import { emptyGame, RULES, type GameSnapshot, type PlayerSnapshot } from '../sha
 import './style.css';
 import musicUrl from '../assets/gameloop.mp3?url';
 import gunUrl from '../assets/gun.mp3?url';
+import explosionUrl from '../assets/explode.mp3?url';
+import bashOneUrl from '../assets/bash1.mp3?url';
+import bashTwoUrl from '../assets/bash2.mp3?url';
+import thudUrl from '../assets/thud.mp3?url';
 import menuMusicUrl from '../assets/menu.mp3?url';
 
 function carColour(id: string): number {
@@ -128,6 +132,7 @@ class ArenaScene extends Phaser.Scene {
   private menuMusic?: Phaser.Sound.BaseSound;
   private audioMuted = false;
   private musicMuted = false;
+  private soloContacts = new Set<string>();
 
   constructor() { super('arena'); }
 
@@ -137,6 +142,10 @@ class ArenaScene extends Phaser.Scene {
     });
     this.load.audio('game-music', musicUrl);
     this.load.audio('gunshot', gunUrl);
+    this.load.audio('explosion', explosionUrl);
+    this.load.audio('bash1', bashOneUrl);
+    this.load.audio('bash2', bashTwoUrl);
+    this.load.audio('thud', thudUrl);
     this.load.audio('menu-music', menuMusicUrl);
   }
 
@@ -232,6 +241,11 @@ class ArenaScene extends Phaser.Scene {
   private readonly audioVisibility = (): void => {
     this.sound.mute = this.audioMuted || document.hidden;
   };
+
+  private playEffect(key: 'thud' | 'bash1' | 'bash2' | 'explosion' | 'gunshot', volume: number): void {
+    const variation = key === 'gunshot' ? 0.04 : key === 'explosion' ? 0.03 : 0.06;
+    this.sound.play(key, { volume, rate: 1 + (Math.random() * 2 - 1) * variation });
+  }
 
   private readonly openMenu = (): void => {
     if (this.started) element('menu-title').textContent = 'Game menu';
@@ -379,6 +393,15 @@ class ArenaScene extends Phaser.Scene {
       while (this.accumulator >= STEP_MS) {
         this.simulation.setInput('local', controls);
         this.simulation.step();
+        const contacts = new Set<string>();
+        for (const pair of this.simulation.engine.pairs.list) {
+          if (!pair.isActive) continue;
+          contacts.add(pair.id);
+          if (!this.soloContacts.has(pair.id) && !this.sound.locked && !document.hidden) {
+            this.playEffect('thud', 0.45);
+          }
+        }
+        this.soloContacts = contacts;
         this.accumulator -= STEP_MS;
       }
     } else {
@@ -422,6 +445,27 @@ class ArenaScene extends Phaser.Scene {
     g.clear();
     for (const player of game.players) {
       const previous = this.previousVisualPlayers.get(player.id);
+      if (previous && player.wallCollisionSequence > previous.wallCollisionSequence) {
+        const listener = own ?? { x: ARENA.width / 2, y: ARENA.height / 2 };
+        const distance = Math.hypot(player.x - listener.x, player.y - listener.y);
+        if (!this.sound.locked && !document.hidden && distance < 700) {
+          this.playEffect('thud', 0.45 * (1 - distance / 700));
+        }
+      }
+      if (previous && player.collisionSequence > previous.collisionSequence) {
+        const listener = own ?? { x: ARENA.width / 2, y: ARENA.height / 2 };
+        const distance = Math.hypot(player.x - listener.x, player.y - listener.y);
+        if (!this.sound.locked && !document.hidden && distance < 700) {
+          this.playEffect(Math.random() < 0.5 ? 'bash1' : 'bash2', 0.45 * (1 - distance / 700));
+        }
+      }
+      if (previous?.alive && !player.alive && !player.spectator && player.health === 0) {
+        const listener = own ?? { x: ARENA.width / 2, y: ARENA.height / 2 };
+        const distance = Math.hypot(player.x - listener.x, player.y - listener.y);
+        if (!this.sound.locked && !document.hidden && distance < 1000) {
+          this.playEffect('explosion', 0.6 * (1 - distance / 1000));
+        }
+      }
       if (previous && !player.spectator && !reducedMotion.matches) {
         if (player.cores > previous.cores) this.effects.burst(player.x, player.y, 0xffd166);
         if (player.damageSequence > previous.damageSequence) this.effects.burst(player.x, player.y, 0xff917e);
@@ -434,7 +478,7 @@ class ArenaScene extends Phaser.Scene {
         const listener = own ?? { x: ARENA.width / 2, y: ARENA.height / 2 };
         const distance = Math.hypot(bullet.x - listener.x, bullet.y - listener.y);
         if (!this.sound.locked && !document.hidden && distance < 700) {
-          this.sound.play('gunshot', { volume: 0.4 * (1 - distance / 700) });
+          this.playEffect('gunshot', 0.4 * (1 - distance / 700));
         }
       }
     }

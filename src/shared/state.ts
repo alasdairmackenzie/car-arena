@@ -3,6 +3,8 @@ import { schema, t, type SchemaType } from '@colyseus/schema';
 export const PlayerState = schema({
   bot: t.boolean().default(false),
   damageSequence: t.number().default(0),
+  collisionSequence: t.number().default(0),
+  wallCollisionSequence: t.number().default(0),
   damageReason: t.string().default(''),
   x: t.number().default(0),
   y: t.number().default(0),
