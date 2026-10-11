@@ -85,10 +85,10 @@ This is a local prototype, not a hardened public deployment.
 - W / Up: accelerate.
 - S / Down: brake by applying reverse thrust, then reverse.
 - A / D or Left / Right: steer and accelerate. S / Down takes priority for reversing.
-- Space: handbrake.
+- H: open help. M: open the game menu while driving.
 - Forward and reverse thrust are tuned 15% lower for gentler driving for humans
   and bots; steering/grip and relative speed-boost strength are unchanged.
-- F: hold to fire the forward-facing gun.
+- F / Space: hold to fire the forward-facing gun.
 - Manual respawn/reset controls are removed. Wrecks still respawn automatically
   after three seconds with dropped cores.
 
@@ -202,8 +202,8 @@ separate GO/REV or DRIFT buttons. Hold FIRE for the gun alongside the direction
 pad. Hard forward turns automatically reduce rear grip gradually above
 180 px/s, reaching the full subtle effect at 360 px/s with full steering.
 Gentle turns, slow driving, coasting and reversing retain normal grip.
-Straightening up restores grip immediately. Space remains an optional keyboard
-handbrake shortcut; automatic drift does not apply its extra braking.
+Straightening up restores grip immediately. Space fires alongside F; there is
+no manual keyboard handbrake. Automatic drift does not apply extra braking.
 Multiple touches work together.
 Releasing/cancelling a touch, leaving the tab or losing window focus clears
 held controls. Controls are disabled while waiting, counting down, respawning

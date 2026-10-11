@@ -36,8 +36,8 @@ export class DrivingInput {
       throttle: pressed('KeyS', 'ArrowDown') ? -1
         : pressed('KeyW', 'ArrowUp', 'KeyA', 'ArrowLeft', 'KeyD', 'ArrowRight'),
       steering: pressed('KeyD', 'ArrowRight') - pressed('KeyA', 'ArrowLeft'),
-      handbrake: this.held.has('Space'),
-      fire: this.held.has('KeyF'),
+      handbrake: false,
+      fire: Boolean(pressed('KeyF', 'Space')),
     };
   }
 

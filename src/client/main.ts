@@ -134,6 +134,7 @@ class ArenaScene extends Phaser.Scene {
     play.addEventListener('click', this.startPlaying);
     mainMenu.addEventListener('click', this.backToMainMenu);
     help.addEventListener('click', this.openMenu);
+    window.addEventListener('keydown', this.menuShortcut);
     menu.addEventListener('close', this.closeMenu);
     lobbyList.addEventListener('click', this.joinLobby);
     lobbyRefresh.addEventListener('click', this.refreshLobbies);
@@ -153,6 +154,7 @@ class ArenaScene extends Phaser.Scene {
       play.removeEventListener('click', this.startPlaying);
       mainMenu.removeEventListener('click', this.backToMainMenu);
       help.removeEventListener('click', this.openMenu);
+      window.removeEventListener('keydown', this.menuShortcut);
       menu.removeEventListener('close', this.closeMenu);
       lobbyList.removeEventListener('click', this.joinLobby);
       lobbyRefresh.removeEventListener('click', this.refreshLobbies);
@@ -163,7 +165,22 @@ class ArenaScene extends Phaser.Scene {
     });
   }
 
-  private readonly openMenu = (): void => { menu.showModal(); };
+  private readonly openMenu = (): void => {
+    if (this.started) element('menu-title').textContent = 'Game menu';
+    if (!menu.open) menu.showModal();
+  };
+  private readonly menuShortcut = (event: KeyboardEvent): void => {
+    if (!this.started || menu.open || errorDialog.open || event.repeat
+      || event.ctrlKey || event.metaKey || event.altKey
+      || !arena.contains(document.activeElement)
+      || !['KeyH', 'KeyM'].includes(event.code)) return;
+    event.preventDefault();
+    this.openMenu();
+    if (event.code === 'KeyH') {
+      element('menu-title').textContent = 'Help';
+      element('controls').scrollIntoView({ block: 'nearest' });
+    }
+  };
   private readonly backToMainMenu = (): void => { window.location.reload(); };
   private readonly closeMenu = (): void => {
     if (errorDialog.open) element('error-continue').focus();
