@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { ArenaSession, MAX_PLAYERS } from './session';
+import { MAX_PLAYERS } from './session';
+import { HumanTestSession as ArenaSession } from '../../tests/human-session';
 import { idleInput, isCarInput } from '../shared/simulation';
+import Matter from 'matter-js';
+import { RULES } from '../shared/game';
 
 describe('authoritative arena session', () => {
   it('spawns distinct cars, caps the room and removes disconnected players', () => {
@@ -12,9 +15,11 @@ describe('authoritative arena session', () => {
         expect(Math.hypot(car.x - other.x, car.y - other.y)).toBeGreaterThan(100);
       }
     }
-    expect(() => session.join('extra')).toThrow('full');
-    session.leave('0');
     session.join('extra');
+    expect(session.players.get('extra')!.spectator).toBe(true);
+    expect(session.simulation.cars.size).toBe(MAX_PLAYERS);
+    session.leave('0');
+    expect(session.players.get('extra')!.spectator).toBe(false);
     expect(session.simulation.cars.has('0')).toBe(false);
   });
 
@@ -23,6 +28,8 @@ describe('authoritative arena session', () => {
     const active = new ArenaSession();
     for (const session of [stale, active]) {
       session.join('car');
+      session.join('other');
+      for (let i = 0; i < RULES.countdownTicks; i++) session.step();
       session.input('car', { ...idleInput(), throttle: 1 });
     }
     for (let i = 0; i < 75; i++) {
@@ -38,17 +45,25 @@ describe('authoritative arena session', () => {
     const session = new ArenaSession();
     session.join('first');
     session.join('second');
+    for (let i = 0; i < RULES.countdownTicks; i++) session.step();
     session.reset('second');
+    for (let i = 0; i < RULES.respawnTicks; i++) session.step();
     const [first, second] = session.simulation.snapshot();
     expect(Math.hypot(first.x - second.x, first.y - second.y)).toBeGreaterThan(100);
   });
 
   it('car collisions affect the other car on the authoritative world', () => {
     const session = new ArenaSession();
-    session.simulation.addCar('front', 720, 320);
-    session.simulation.addCar('rear', 720, 450);
+    session.join('front');
+    session.join('rear');
+    for (let i = 0; i < RULES.countdownTicks; i++) session.step();
+    Matter.Body.setPosition(session.simulation.cars.get('front')!.body, { x: 720, y: 320 });
+    Matter.Body.setPosition(session.simulation.cars.get('rear')!.body, { x: 720, y: 450 });
     session.input('rear', { ...idleInput(), throttle: 1 });
-    for (let i = 0; i < 25; i++) session.step();
+    for (let i = 0; i < 25; i++) {
+      session.input('rear', { ...idleInput(), throttle: 1 });
+      session.step();
+    }
     const front = session.simulation.snapshot().find(car => car.id === 'front')!;
     expect(front.y).toBeLessThan(310);
     expect(front.speed).toBeGreaterThan(5);
@@ -56,10 +71,11 @@ describe('authoritative arena session', () => {
 
   it('validates message types and finite bounded input axes', () => {
     for (const input of [null, [], 1, {}, { throttle: 1 }, {
-      throttle: Infinity, steering: 0, handbrake: false,
-    }, { throttle: 0, steering: -2, handbrake: false }, {
-      throttle: 0, steering: 0, handbrake: 'yes',
-    }]) expect(isCarInput(input)).toBe(false);
+      ...idleInput(), throttle: Infinity,
+    }, { ...idleInput(), steering: -2 }, {
+      ...idleInput(), handbrake: 'yes',
+    }, { ...idleInput(), fire: 'yes' },
+    { throttle: 0, steering: 0, handbrake: false }]) expect(isCarInput(input)).toBe(false);
     expect(isCarInput(idleInput())).toBe(true);
   });
 });

@@ -4,13 +4,12 @@ export class DrivingInput {
   private readonly held = new Set<string>();
   private readonly codes = new Set([
     'KeyW', 'KeyS', 'KeyA', 'KeyD',
-    'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyR',
+    'ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space', 'KeyF',
   ]);
   private readonly down = (event: KeyboardEvent): void => {
     if (!this.arena.contains(document.activeElement) || !this.codes.has(event.code)) return;
     event.preventDefault();
     this.held.add(event.code);
-    if (event.code === 'KeyR' && !event.repeat) this.reset();
   };
   private readonly up = (event: KeyboardEvent): void => {
     this.held.delete(event.code);
@@ -21,7 +20,7 @@ export class DrivingInput {
   };
   private readonly focus = (): void => { this.arena.focus(); };
 
-  constructor(private readonly arena: HTMLElement, private readonly reset: () => void) {
+  constructor(private readonly arena: HTMLElement) {
     window.addEventListener('keydown', this.down);
     window.addEventListener('keyup', this.up);
     window.addEventListener('blur', this.clear);
@@ -37,6 +36,7 @@ export class DrivingInput {
       throttle: pressed('KeyW', 'ArrowUp') - pressed('KeyS', 'ArrowDown'),
       steering: pressed('KeyD', 'ArrowRight') - pressed('KeyA', 'ArrowLeft'),
       handbrake: this.held.has('Space'),
+      fire: this.held.has('KeyF'),
     };
   }
 

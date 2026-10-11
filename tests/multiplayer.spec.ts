@@ -1,9 +1,17 @@
 import { expect, test, type Page } from '@playwright/test';
+import { createLobby, joinLobby } from './lobby';
 import type { CarSnapshot } from '../src/shared/simulation';
 
 async function states(page: Page): Promise<CarSnapshot[]> {
   const raw = await page.getByRole('region', { name: 'Driving arena' }).getAttribute('data-state');
   return raw ? JSON.parse(raw) as CarSnapshot[] : [];
+}
+
+async function waitForRound(page: Page): Promise<void> {
+  await expect.poll(async () => {
+    const raw = await page.getByRole('region', { name: 'Driving arena' }).getAttribute('data-game');
+    return raw ? JSON.parse(raw).phase : '';
+  }, { timeout: 10000 }).toBe('active');
 }
 
 test('two browsers share a room, drive independently and converge after stopping', async ({ browser }) => {
@@ -15,16 +23,25 @@ test('two browsers share a room, drive independently and converge after stopping
   for (const page of [first, second]) page.on('pageerror', error => errors.push(error.message));
   try {
     await first.goto('/');
+    const lobby = await createLobby(first);
     const arenaA = first.getByRole('region', { name: 'Driving arena' });
     await expect(arenaA).toHaveAttribute('data-players', '1');
     await second.goto('/');
+    await joinLobby(second, lobby);
     const arenaB = second.getByRole('region', { name: 'Driving arena' });
     await expect(arenaA).toHaveAttribute('data-players', '2');
     await expect(arenaB).toHaveAttribute('data-players', '2');
+    await expect.poll(async () => {
+      const labels = JSON.parse(await arenaA.getAttribute('data-labels') ?? '[]') as { id: string }[];
+      return labels.length;
+    }).toBe(2);
+    await expect(arenaA).toHaveAttribute('data-player', /.+/);
+    await expect(arenaB).toHaveAttribute('data-player', /.+/);
     expect(await arenaA.getAttribute('data-room')).toBe(await arenaB.getAttribute('data-room'));
     const firstId = await arenaA.getAttribute('data-player');
     const secondId = await arenaB.getAttribute('data-player');
     expect(firstId).not.toBe(secondId);
+    await waitForRound(first);
 
     const before = await states(first);
     const firstStart = before.find(car => car.id === firstId)!;
@@ -70,29 +87,32 @@ test('two browsers share a room, drive independently and converge after stopping
 
 test('connection loss is visible and does not switch to a solo world', async ({ page }) => {
   await page.goto('/');
+  await createLobby(page);
   const arena = page.getByRole('region', { name: 'Driving arena' });
   await expect(arena).toHaveAttribute('data-connected', 'true');
   await page.context().setOffline(true);
   await expect(page.getByRole('alert')).toContainText('Disconnected', { timeout: 15000 });
   await expect(arena).toHaveAttribute('data-connected', 'false');
   await expect(arena).toHaveAttribute('data-players', '0');
-  await expect(page.getByRole('button', { name: 'Reset car' })).toBeDisabled();
 });
 
-test('ramming transfers motion to another browser car, and reset avoids it', async ({ browser }) => {
+test('ramming transfers motion to another browser car', async ({ browser }) => {
   const contextA = await browser.newContext();
   const contextB = await browser.newContext();
   try {
     const a = await contextA.newPage();
     const b = await contextB.newPage();
     await a.goto('/');
+    const lobby = await createLobby(a);
     const arenaA = a.getByRole('region', { name: 'Driving arena' });
     await expect(arenaA).toHaveAttribute('data-players', '1');
     await b.goto('/');
+    await joinLobby(b, lobby);
     const arenaB = b.getByRole('region', { name: 'Driving arena' });
     await expect(arenaA).toHaveAttribute('data-players', '2');
     await expect(arenaB).toHaveAttribute('data-players', '2');
     const idB = await arenaB.getAttribute('data-player');
+    await waitForRound(a);
     const initialY = Number(await arenaB.getAttribute('data-y'));
     await arenaA.click();
     await a.keyboard.down('w');
@@ -103,10 +123,6 @@ test('ramming transfers motion to another browser car, and reset avoids it', asy
       (await states(a)).find(car => car.id === idB)?.y ?? Infinity,
     ).toBeLessThan(initialY - 20);
     await a.keyboard.up('Space');
-    await a.getByRole('button', { name: 'Reset car' }).click();
-    await expect.poll(async () => Number(await arenaA.getAttribute('data-y'))).toBe(450);
-    const cars = await states(a);
-    expect(Math.hypot(cars[0].x - cars[1].x, cars[0].y - cars[1].y)).toBeGreaterThan(100);
     await expect(a.getByRole('alert')).toBeHidden();
     await expect(b.getByRole('alert')).toBeHidden();
   } finally {
@@ -118,6 +134,7 @@ test('ramming transfers motion to another browser car, and reset avoids it', asy
 test('a failed join reports an error instead of launching local physics', async ({ page }) => {
   await page.route('**/game/**', route => route.abort());
   await page.goto('/');
+  await page.getByRole('button', { name: 'Create lobby' }).click();
   await expect(page.getByRole('alert')).toContainText('Could not join the arena');
   const arena = page.getByRole('region', { name: 'Driving arena' });
   await expect(arena).toHaveAttribute('data-connected', 'false');

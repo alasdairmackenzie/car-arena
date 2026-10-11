@@ -1,0 +1,31 @@
+import { expect, test } from '@playwright/test';
+import { createLobby } from './lobby';
+
+test('pregame menu gates joining and help returns focus without rejoining', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.message));
+  await page.goto('/');
+  const arena = page.getByRole('region', { name: 'Driving arena' });
+  const menu = page.getByRole('dialog');
+  await expect(menu).toBeVisible();
+  await expect(page.locator('#controls')).toBeVisible();
+  await expect(arena).toHaveAttribute('data-connected', 'false');
+  await page.waitForTimeout(600);
+  await expect(arena).toHaveAttribute('data-connected', 'false');
+  await expect(arena).toHaveAttribute('data-player', '');
+  await page.keyboard.press('Escape');
+  await expect(menu).toBeHidden();
+  await page.getByRole('button', { name: 'Play / how to play' }).click();
+  await createLobby(page);
+  await expect(arena).toHaveAttribute('data-connected', 'true');
+  await expect(arena).toBeFocused();
+  await expect(page.locator('#controls')).toBeHidden();
+  const id = await arena.getAttribute('data-player');
+  await page.getByRole('button', { name: 'Help / standings' }).click();
+  await expect(menu).toBeVisible();
+  await expect(page.locator('#menu-note')).toContainText('keeps running');
+  await page.getByRole('button', { name: 'Back to game' }).click();
+  await expect(arena).toBeFocused();
+  await expect(arena).toHaveAttribute('data-player', id!);
+  expect(errors).toEqual([]);
+});

@@ -20,6 +20,7 @@ export interface CarInput {
   throttle: number;
   steering: number;
   handbrake: boolean;
+  fire: boolean;
 }
 
 export function isCarInput(value: unknown): value is CarInput {
@@ -28,11 +29,12 @@ export function isCarInput(value: unknown): value is CarInput {
     Number.isFinite(value.throttle) && Math.abs(value.throttle) <= 1 &&
     'steering' in value && typeof value.steering === 'number' &&
     Number.isFinite(value.steering) && Math.abs(value.steering) <= 1 &&
-    'handbrake' in value && typeof value.handbrake === 'boolean';
+    'handbrake' in value && typeof value.handbrake === 'boolean' &&
+    'fire' in value && typeof value.fire === 'boolean';
 }
 
 export const idleInput = (): CarInput => ({
-  throttle: 0, steering: 0, handbrake: false,
+  throttle: 0, steering: 0, handbrake: false, fire: false,
 });
 
 export interface CarSnapshot {
@@ -47,6 +49,7 @@ export interface CarSnapshot {
 interface Vehicle {
   body: Matter.Body;
   input: CarInput;
+  engineMultiplier: number;
 }
 
 export class Simulation {
@@ -70,7 +73,7 @@ export class Simulation {
     });
     Body.setMass(body, CAR.mass);
     Body.setAngle(body, -Math.PI / 2);
-    this.cars.set(id, { body, input: idleInput() });
+    this.cars.set(id, { body, input: idleInput(), engineMultiplier: 1 });
     Composite.add(this.engine.world, body);
   }
 
@@ -85,6 +88,11 @@ export class Simulation {
     this.requireCar(id).input = { ...input };
   }
 
+  setEngineMultiplier(id: string, multiplier: number): void {
+    if (!Number.isFinite(multiplier) || multiplier < 1 || multiplier > 2) throw new Error('Invalid engine multiplier');
+    this.requireCar(id).engineMultiplier = multiplier;
+  }
+
   resetCar(id: string, x = ARENA.width / 2, y = ARENA.height / 2): void {
     const car = this.requireCar(id);
     Body.setPosition(car.body, { x, y });
@@ -95,6 +103,7 @@ export class Simulation {
     car.body.force.y = 0;
     car.body.torque = 0;
     car.input = idleInput();
+    car.engineMultiplier = 1;
   }
 
   step(): void {
@@ -116,7 +125,7 @@ export class Simulation {
     return car;
   }
 
-  private applyTyreForces({ body, input }: Vehicle): void {
+  private applyTyreForces({ body, input, engineMultiplier }: Vehicle): void {
     const velocity = Body.getVelocity(body);
     const angularVelocity = Body.getAngularVelocity(body);
     for (const longitudinal of [-22, 22]) {
@@ -141,7 +150,7 @@ export class Simulation {
         });
       }
     }
-    const force = input.throttle * (input.throttle < 0 ? HANDLING.reverseForce : HANDLING.engineForce);
+    const force = input.throttle * (input.throttle < 0 ? HANDLING.reverseForce : HANDLING.engineForce) * engineMultiplier;
     Body.applyForce(body, body.position, {
       x: Math.cos(body.angle) * force,
       y: Math.sin(body.angle) * force,

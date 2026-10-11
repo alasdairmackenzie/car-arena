@@ -78,7 +78,7 @@ describe('vehicle simulation', () => {
 
   it('reset clears momentum and inputs', () => {
     const simulation = world();
-    simulation.setInput('car', { throttle: 1, steering: 1, handbrake: true });
+    simulation.setInput('car', { ...idleInput(), throttle: 1, steering: 1, handbrake: true });
     advance(simulation, 20);
     simulation.resetCar('car');
     advance(simulation, 10);
