@@ -65,6 +65,13 @@ Wall contact starts play `thud.mp3`, including in solo practice. Holding against
 a wall does not repeat the sound, and walls still cause no damage.
 Each effect gets subtle random playback-rate variation: gunshots +/-4%,
 bashes/thuds +/-6%, explosions +/-3%. Music pitch and playback rate stay unchanged.
+Power-up collections play `collect.mp3`; gold core collections play `pickup.mp3`.
+Both fade with distance, respect sound mute and vary playback rate by +/-6%.
+Refreshing an existing power-up also plays its collection sound.
+Your own moving car loops `engine.mp3`, smoothly raising playback rate from
+0.8 to 1.6 as speed rises up to 400px/s. It stops when stationary, wrecked or
+spectating. Small start/stop thresholds prevent jitter at near-zero speed.
+The Sound toggle mutes the engine; music-only mute leaves it audible.
 Background tabs are muted. Returning to the lobby picker stops
 music, and leaving the page stops playback.
 **Mute music** is available in both the main and game menus and pauses only

@@ -5,6 +5,8 @@ export const PlayerState = schema({
   damageSequence: t.number().default(0),
   collisionSequence: t.number().default(0),
   wallCollisionSequence: t.number().default(0),
+  corePickupSequence: t.number().default(0),
+  powerUpPickupSequence: t.number().default(0),
   damageReason: t.string().default(''),
   x: t.number().default(0),
   y: t.number().default(0),

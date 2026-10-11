@@ -61,6 +61,7 @@ export class ArenaNetwork {
           name: player.name, wins: player.wins,
           bot: player.bot,
           damageSequence: player.damageSequence, collisionSequence: player.collisionSequence, wallCollisionSequence: player.wallCollisionSequence, damageReason: player.damageReason,
+          corePickupSequence: player.corePickupSequence, powerUpPickupSequence: player.powerUpPickupSequence,
           shieldTicks: player.shieldTicks, boostTicks: player.boostTicks, disruptor: player.disruptor,
         })),
         cores: [...state.cores].map(([id, core]) => ({ id, x: core.x, y: core.y })),

@@ -22,6 +22,8 @@ interface Player {
   damageSequence: number;
   collisionSequence: number;
   wallCollisionSequence: number;
+  corePickupSequence: number;
+  powerUpPickupSequence: number;
   damageReason: string;
   health: number;
   cores: number;
@@ -82,6 +84,7 @@ export class ArenaSession {
     if (this.players.has(id)) throw new Error(`Player already exists: ${id}`);
     this.players.set(id, {
       bot: false, damageSequence: 0, collisionSequence: 0, wallCollisionSequence: 0, damageReason: '', health: 0, cores: 0, respawnAt: 0,
+      corePickupSequence: 0, powerUpPickupSequence: 0,
       protectedUntil: 0, nextShotAt: 0,
       lastInputAt: this.tick, input: idleInput(),
       pose: { id, x: 0, y: 0, angle: -Math.PI / 2, speed: 0, steering: 0 },
@@ -195,6 +198,7 @@ export class ArenaSession {
         ...player.pose, id, health: player.health, cores: player.cores,
         bot: player.bot,
         damageSequence: player.damageSequence, collisionSequence: player.collisionSequence, wallCollisionSequence: player.wallCollisionSequence, damageReason: player.damageReason,
+        corePickupSequence: player.corePickupSequence, powerUpPickupSequence: player.powerUpPickupSequence,
         alive: player.health > 0,
         respawnTicks: player.health === 0 ? Math.max(0, player.respawnAt - this.tick) : 0,
         protectionTicks: Math.max(0, player.protectedUntil - this.tick),
@@ -363,6 +367,7 @@ export class ArenaSession {
       else if (pickup.kind === 'disruptor') player.disruptor = true;
       else this.damagePlayer(collector[0], RULES.powerDownDamage, 'Picked up a power-down');
       this.powerUps.delete(id);
+      player.powerUpPickupSequence++;
     }
   }
 
@@ -383,6 +388,7 @@ export class ArenaSession {
       if (!collector) continue;
       const [playerId, player] = collector;
       player.cores++;
+      player.corePickupSequence++;
       this.cores.delete(id);
       if (player.cores === RULES.goal) {
         this.finishRound(playerId);
@@ -570,6 +576,7 @@ export class ArenaSession {
       if (this.players.has(id)) continue;
       this.players.set(id, {
         bot: true, damageSequence: 0, collisionSequence: 0, wallCollisionSequence: 0, damageReason: '', health: 0, cores: 0, respawnAt: 0, protectedUntil: 0,
+        corePickupSequence: 0, powerUpPickupSequence: 0,
         nextShotAt: 0, lastInputAt: this.tick, input: idleInput(),
         pose: { id, x: 0, y: 0, angle: -Math.PI / 2, speed: 0, steering: 0 },
         spectator: false, name: `Bot ${id.slice(4)}`, wins: 0,

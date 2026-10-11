@@ -14,6 +14,9 @@ import explosionUrl from '../assets/explode.mp3?url';
 import bashOneUrl from '../assets/bash1.mp3?url';
 import bashTwoUrl from '../assets/bash2.mp3?url';
 import thudUrl from '../assets/thud.mp3?url';
+import collectUrl from '../assets/collect.mp3?url';
+import pickupUrl from '../assets/pickup.mp3?url';
+import engineUrl from '../assets/engine.mp3?url';
 import menuMusicUrl from '../assets/menu.mp3?url';
 
 function carColour(id: string): number {
@@ -133,6 +136,8 @@ class ArenaScene extends Phaser.Scene {
   private audioMuted = false;
   private musicMuted = false;
   private soloContacts = new Set<string>();
+  private engineSound?: Phaser.Sound.BaseSound;
+  private engineRate = 0.8;
 
   constructor() { super('arena'); }
 
@@ -146,12 +151,16 @@ class ArenaScene extends Phaser.Scene {
     this.load.audio('bash1', bashOneUrl);
     this.load.audio('bash2', bashTwoUrl);
     this.load.audio('thud', thudUrl);
+    this.load.audio('collect', collectUrl);
+    this.load.audio('pickup', pickupUrl);
+    this.load.audio('engine', engineUrl);
     this.load.audio('menu-music', menuMusicUrl);
   }
 
   create(): void {
     this.music = this.sound.add('game-music', { loop: true, volume: 0.25 });
     this.menuMusic = this.sound.add('menu-music', { loop: true, volume: 0.25 });
+    this.engineSound = this.sound.add('engine', { loop: true, volume: 0.2, rate: 0.8 });
     this.sound.on(Phaser.Sound.Events.UNLOCKED, this.startMusic);
     element('audio-toggle').addEventListener('click', this.toggleAudio);
     element('music-toggle').addEventListener('click', this.toggleMusic);
@@ -195,6 +204,7 @@ class ArenaScene extends Phaser.Scene {
       document.removeEventListener('visibilitychange', this.audioVisibility);
       this.music?.destroy();
       this.menuMusic?.destroy();
+      this.engineSound?.destroy();
       this.damageAnimation?.cancel();
       this.inputController.destroy();
       this.touchController.destroy();
@@ -242,9 +252,27 @@ class ArenaScene extends Phaser.Scene {
     this.sound.mute = this.audioMuted || document.hidden;
   };
 
-  private playEffect(key: 'thud' | 'bash1' | 'bash2' | 'explosion' | 'gunshot', volume: number): void {
+  private playEffect(key: 'thud' | 'bash1' | 'bash2' | 'explosion' | 'gunshot' | 'collect' | 'pickup', volume: number): void {
     const variation = key === 'gunshot' ? 0.04 : key === 'explosion' ? 0.03 : 0.06;
     this.sound.play(key, { volume, rate: 1 + (Math.random() * 2 - 1) * variation });
+  }
+
+  private updateEngine(car: CarSnapshot | undefined, alive: boolean, delta: number): void {
+    const sound = this.engineSound;
+    if (!sound) return;
+    const moving = this.started && alive && car && car.speed > (sound.isPlaying ? 3 : 8)
+      && !document.hidden && !this.sound.locked;
+    if (!moving) {
+      if (sound.isPlaying) sound.stop();
+      this.engineRate = 0.8;
+      return;
+    }
+    const targetRate = 0.8 + Math.min(car.speed / 400, 1) * 0.8;
+    this.engineRate += (targetRate - this.engineRate) * (1 - Math.exp(-Math.min(delta, 100) / 150));
+    if (sound instanceof Phaser.Sound.WebAudioSound || sound instanceof Phaser.Sound.HTML5AudioSound) {
+      sound.setRate(this.engineRate);
+    }
+    if (!sound.isPlaying) sound.play({ loop: true, volume: 0.2, rate: this.engineRate });
   }
 
   private readonly openMenu = (): void => {
@@ -417,6 +445,7 @@ class ArenaScene extends Phaser.Scene {
     const own = authoritative.find(car => car.id === ownId);
     const game = this.network?.snapshot() ?? emptyGame();
     const combatOwn = game.players.find(car => car.id === ownId);
+    this.updateEngine(own, solo || Boolean(combatOwn?.alive && !combatOwn.spectator), delta);
     if (combatOwn && this.lastDamageSequence !== combatOwn.damageSequence) {
       if (this.lastDamageSequence !== undefined && combatOwn.damageSequence > this.lastDamageSequence) {
         damageFlash.textContent = combatOwn.alive ? combatOwn.damageReason : "You've been scrapped";
@@ -445,6 +474,15 @@ class ArenaScene extends Phaser.Scene {
     g.clear();
     for (const player of game.players) {
       const previous = this.previousVisualPlayers.get(player.id);
+      if (previous && !this.sound.locked && !document.hidden) {
+        const listener = own ?? { x: ARENA.width / 2, y: ARENA.height / 2 };
+        const distance = Math.hypot(player.x - listener.x, player.y - listener.y);
+        if (distance < 700) {
+          const volume = 0.4 * (1 - distance / 700);
+          if (player.powerUpPickupSequence > previous.powerUpPickupSequence) this.playEffect('collect', volume);
+          if (player.corePickupSequence > previous.corePickupSequence) this.playEffect('pickup', volume);
+        }
+      }
       if (previous && player.wallCollisionSequence > previous.wallCollisionSequence) {
         const listener = own ?? { x: ARENA.width / 2, y: ARENA.height / 2 };
         const distance = Math.hypot(player.x - listener.x, player.y - listener.y);

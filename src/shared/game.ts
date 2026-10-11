@@ -51,6 +51,8 @@ export interface PlayerSnapshot extends CarSnapshot {
   damageSequence: number;
   collisionSequence: number;
   wallCollisionSequence: number;
+  corePickupSequence: number;
+  powerUpPickupSequence: number;
   damageReason: string;
   health: number;
   cores: number;
