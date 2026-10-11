@@ -6,8 +6,8 @@ export const STEP_MS = 1000 / 60;
 export const ARENA = { width: 1440, height: 900, wall: 40 };
 export const CAR = { length: 60, width: 32, mass: 3 };
 export const HANDLING = {
-  engineForce: 0.00765,
-  reverseForce: 0.00425,
+  engineForce: 0.0057375,
+  reverseForce: 0.0031875,
   rollingResistance: 0.00015,
   lateralGrip: 0.0015,
   handbrakeGrip: 0.0002,

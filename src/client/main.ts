@@ -8,6 +8,16 @@ import { ArenaNetwork, fetchLobbies, type LobbyTarget } from './network';
 import { LOBBY_LIMITS } from '../shared/lobby';
 import { emptyGame, RULES, type GameSnapshot, type PlayerSnapshot } from '../shared/game';
 import './style.css';
+import musicUrl from '../assets/gameloop.mp3?url';
+import gunUrl from '../assets/gun.mp3?url';
+import menuMusicUrl from '../assets/menu.mp3?url';
+
+function carColour(id: string): number {
+  const palette = [0x72e4b0, 0xff917e, 0x79b8ff, 0xffd166, 0xc6a0f6, 0xf1a6cf, 0xeee5d5, 0x75c9cf];
+  let hash = 0;
+  for (const character of id) hash = (Math.imul(hash, 31) + character.charCodeAt(0)) >>> 0;
+  return palette[hash % palette.length];
+}
 
 function element<T extends HTMLElement>(id: string): T {
   const node = document.getElementById(id);
@@ -107,15 +117,36 @@ class ArenaScene extends Phaser.Scene {
   private damageAnimation?: Animation;
   private readonly effects = new ScrapyardEffects();
   private previousVisualPlayers = new Map<string, PlayerSnapshot>();
+  private previousProjectiles = new Set<string>();
+  private readonly shootingUntil = new Map<string, number>();
   private started = false;
   private readonly eventFeed = new EventFeed(element('event-feed'));
   private readonly carLabels = new Map<string, Phaser.GameObjects.Text>();
   private lobbyPoll = 0;
   private lobbyRequest = 0;
+  private music?: Phaser.Sound.BaseSound;
+  private menuMusic?: Phaser.Sound.BaseSound;
+  private audioMuted = false;
+  private musicMuted = false;
 
   constructor() { super('arena'); }
 
+  preload(): void {
+    this.load.on(Phaser.Loader.Events.FILE_LOAD_ERROR, (file: Phaser.Loader.File) => {
+      reportError(`Could not load game asset: ${file.key}`);
+    });
+    this.load.audio('game-music', musicUrl);
+    this.load.audio('gunshot', gunUrl);
+    this.load.audio('menu-music', menuMusicUrl);
+  }
+
   create(): void {
+    this.music = this.sound.add('game-music', { loop: true, volume: 0.25 });
+    this.menuMusic = this.sound.add('menu-music', { loop: true, volume: 0.25 });
+    this.sound.on(Phaser.Sound.Events.UNLOCKED, this.startMusic);
+    element('audio-toggle').addEventListener('click', this.toggleAudio);
+    element('music-toggle').addEventListener('click', this.toggleMusic);
+    document.addEventListener('visibilitychange', this.audioVisibility);
     this.simulation?.addCar('local');
     drawScrapyard(this);
     this.graphics = this.add.graphics();
@@ -140,6 +171,7 @@ class ArenaScene extends Phaser.Scene {
     lobbyRefresh.addEventListener('click', this.refreshLobbies);
     lobbyForm.addEventListener('submit', this.createLobby);
     menu.showModal();
+    this.startMusic();
     if (!solo) {
       this.refreshLobbies();
       this.lobbyPoll = window.setInterval(() => {
@@ -148,6 +180,12 @@ class ArenaScene extends Phaser.Scene {
     }
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
       resizeObserver.disconnect();
+      this.sound.off(Phaser.Sound.Events.UNLOCKED, this.startMusic);
+      element('audio-toggle').removeEventListener('click', this.toggleAudio);
+      element('music-toggle').removeEventListener('click', this.toggleMusic);
+      document.removeEventListener('visibilitychange', this.audioVisibility);
+      this.music?.destroy();
+      this.menuMusic?.destroy();
       this.damageAnimation?.cancel();
       this.inputController.destroy();
       this.touchController.destroy();
@@ -165,9 +203,40 @@ class ArenaScene extends Phaser.Scene {
     });
   }
 
+  private readonly startMusic = (): void => {
+    if (this.sound.locked) return;
+    if (this.musicMuted) {
+      if (this.music?.isPlaying) this.music.pause();
+      if (this.menuMusic?.isPlaying) this.menuMusic.pause();
+      return;
+    }
+    const inMenu = menu.open || !this.started;
+    const active = inMenu ? this.menuMusic : this.music;
+    const inactive = inMenu ? this.music : this.menuMusic;
+    if (inactive?.isPlaying) inactive.pause();
+    if (active?.isPaused) active.resume();
+    else if (active && !active.isPlaying) active.play();
+  };
+  private readonly toggleMusic = (): void => {
+    this.musicMuted = !this.musicMuted;
+    element('music-toggle').textContent = this.musicMuted ? 'Unmute music' : 'Mute music';
+    element('music-toggle').setAttribute('aria-pressed', String(this.musicMuted));
+    this.startMusic();
+  };
+  private readonly toggleAudio = (): void => {
+    this.audioMuted = !this.audioMuted;
+    element('audio-toggle').textContent = this.audioMuted ? 'Sound: off' : 'Sound: on';
+    element('audio-toggle').setAttribute('aria-pressed', String(this.audioMuted));
+    this.audioVisibility();
+  };
+  private readonly audioVisibility = (): void => {
+    this.sound.mute = this.audioMuted || document.hidden;
+  };
+
   private readonly openMenu = (): void => {
     if (this.started) element('menu-title').textContent = 'Game menu';
     if (!menu.open) menu.showModal();
+    this.startMusic();
   };
   private readonly menuShortcut = (event: KeyboardEvent): void => {
     if (!this.started || menu.open || errorDialog.open || event.repeat
@@ -183,6 +252,7 @@ class ArenaScene extends Phaser.Scene {
   };
   private readonly backToMainMenu = (): void => { window.location.reload(); };
   private readonly closeMenu = (): void => {
+    this.startMusic();
     if (errorDialog.open) element('error-continue').focus();
     else if (this.started) arena.focus();
     else help.focus();
@@ -246,6 +316,7 @@ class ArenaScene extends Phaser.Scene {
 
   private markStarted(): void {
     this.started = true;
+    this.startMusic();
     window.clearInterval(this.lobbyPoll);
     arena.dataset.started = 'true';
     document.querySelector('main')?.classList.add('playing');
@@ -271,6 +342,7 @@ class ArenaScene extends Phaser.Scene {
 
   private returnToPicker(): void {
     this.started = false;
+    this.music?.stop();
     delete arena.dataset.started;
     document.querySelector('main')?.classList.remove('playing');
     lobbyPicker.hidden = false;
@@ -284,6 +356,7 @@ class ArenaScene extends Phaser.Scene {
       if (menu.open && !this.started) this.refreshLobbies();
     }, 3000);
     if (!menu.open) menu.showModal();
+    this.startMusic();
   }
 
   update(_time: number, delta: number): void {
@@ -355,6 +428,20 @@ class ArenaScene extends Phaser.Scene {
       }
     }
     this.previousVisualPlayers = new Map(game.players.map(player => [player.id, player]));
+    for (const bullet of game.projectiles) {
+      if (!this.previousProjectiles.has(bullet.id)) {
+        this.shootingUntil.set(bullet.owner, _time + 300);
+        const listener = own ?? { x: ARENA.width / 2, y: ARENA.height / 2 };
+        const distance = Math.hypot(bullet.x - listener.x, bullet.y - listener.y);
+        if (!this.sound.locked && !document.hidden && distance < 700) {
+          this.sound.play('gunshot', { volume: 0.4 * (1 - distance / 700) });
+        }
+      }
+    }
+    this.previousProjectiles = new Set(game.projectiles.map(bullet => bullet.id));
+    for (const [id, until] of this.shootingUntil) {
+      if (until <= _time || !game.players.some(player => player.id === id && player.alive)) this.shootingUntil.delete(id);
+    }
     for (const core of game.cores) {
       const glow = reducedMotion.matches ? 0.14 : 0.12 + Math.sin(_time / 700 + core.x) * 0.04;
       g.fillStyle(0xffd166, glow).fillCircle(core.x, core.y, 30);
@@ -391,7 +478,7 @@ class ArenaScene extends Phaser.Scene {
     for (const car of cars) {
       const combat = game.players.find(player => player.id === car.id);
       if (combat?.spectator) continue;
-      if (!combat || combat.alive) this.drawCar(car, car.id === ownId, combat);
+      if (!combat || combat.alive) this.drawCar(car, car.id === ownId, combat, this.shootingUntil.get(car.id) ?? 0, _time);
       else {
         g.lineStyle(3, 0xff917e, 0.4);
         g.lineBetween(car.x - 15, car.y - 15, car.x + 15, car.y + 15);
@@ -488,7 +575,7 @@ class ArenaScene extends Phaser.Scene {
     for (const car of cars) {
       const player = game.players.find(player => player.id === car.id);
       if (player?.spectator || player?.alive === false) continue;
-      dot(car.x, car.y, car.id === ownId ? '#72e4b0' : '#ff917e', car.id === ownId ? 4 : 3);
+      dot(car.x, car.y, car.id === ownId ? '#72e4b0' : `#${carColour(car.id).toString(16).padStart(6, '0')}`, car.id === ownId ? 4 : 3);
     }
     const view = this.cameras.main.worldView;
     context.strokeStyle = '#e6eef3';
@@ -584,11 +671,23 @@ class ArenaScene extends Phaser.Scene {
     }
   }
 
-  private drawCar(car: CarSnapshot, own: boolean, combat?: PlayerSnapshot): void {
+  private drawCar(car: CarSnapshot, own: boolean, combat: PlayerSnapshot | undefined, shootingUntil: number, time: number): void {
     const g = this.graphics;
     g.save();
     g.translateCanvas(car.x, car.y);
     g.rotateCanvas(car.angle);
+    const paint = carColour(car.id);
+    for (const y of [-6.5, 6.5]) {
+      for (let segment = 0; segment < 6; segment++) {
+        const start = 27 + segment * 12;
+        const spread = 3 + segment * 1.5;
+        g.fillStyle(0xffedc2, 0.055 * (1 - segment / 6)).fillPoints([
+          { x: start, y: y - spread }, { x: start + 12, y: y - spread - 1.5 },
+          { x: start + 12, y: y + spread + 1.5 }, { x: start, y: y + spread },
+        ], true);
+      }
+      g.fillStyle(0xffedc2, 0.08).fillCircle(26, y, 9);
+    }
     const body = [
       { x: -CAR.length / 2, y: -CAR.width / 2 + 5 },
       { x: -CAR.length / 2 + 5, y: -CAR.width / 2 },
@@ -615,19 +714,32 @@ class ArenaScene extends Phaser.Scene {
         g.restore();
       }
     }
-    g.fillStyle(own ? 0x72e4b0 : 0xff917e).fillPoints(body, true);
-    g.lineStyle(2, 0x101820).strokePoints(body, true);
-    g.fillStyle(0x22303a).fillRoundedRect(-10, -12, 23, 24, 3);
-    g.lineStyle(1, 0x94b2bc, 0.65).lineBetween(-7, -9, 8, -9);
-    g.fillStyle(0x0b1218).fillRect(14, -10, 10, 20);
-    g.fillStyle(own ? 0x72e4b0 : 0xff917e, 0.7).fillRect(16, -8, 6, 16);
-    g.fillStyle(0xc3c8c5).fillRect(-30, -13, 4, 26).fillRect(27, -8, 4, 16);
-    g.lineStyle(2, 0x17232a).lineBetween(-23, -9, -15, -5).lineBetween(-21, 8, -14, 10);
-    g.fillStyle(0x0a1117).fillRect(-25, -12, 3, 24);
-    g.fillStyle(0xc69a44).fillRect(-20, -3, 5, 6);
-    g.fillStyle(0xc4f9e1).fillRect(22, -9, 5, 5).fillRect(22, 4, 5, 5);
+    g.fillStyle(paint).fillPoints(body, true);
+    g.lineStyle(2, own ? 0x72e4b0 : 0x101820).strokePoints(body, true);
+    g.fillStyle(0x101c29).fillRect(-15, -12, 29, 24);
+    g.fillStyle(0x8ec7da).fillPoints([
+      { x: 6, y: -10 }, { x: 13, y: -8 }, { x: 13, y: 8 }, { x: 6, y: 10 },
+    ], true);
+    g.fillStyle(0x577f96).fillRect(-14, -9, 6, 18);
+    g.fillStyle(paint).fillRect(-7, -9, 12, 18);
+    g.fillStyle(0xffffff, 0.22).fillRect(-6, -8, 10, 2).fillRect(16, -8, 8, 2);
+    g.lineStyle(1, 0x17232a, 0.65).lineBetween(15, -8, 15, 8).lineBetween(-18, -11, -18, 11);
+    g.fillStyle(0x84939c).fillRect(-30, -12, 3, 24).fillRect(28, -7, 3, 14);
+    g.fillStyle(0xffedc2).fillRect(22, -9, 5, 5).fillRect(22, 4, 5, 5);
     g.fillStyle(0xff6b70).fillRect(-29, -12, 4, 7).fillRect(-29, 5, 4, 7);
-    if (combat) g.fillStyle(0xdeeaf2).fillRect(15, -3, 22, 6);
+    if (combat && shootingUntil > time) {
+      g.fillStyle(0x101820).fillRect(-1, -19, 10, 8);
+      g.fillStyle(0xe1ac83).fillRect(1, -22, 5, 5).fillRect(7, -18, 9, 3);
+      g.fillStyle(0x342d2d).fillRect(1, -23, 5, 2);
+      g.fillStyle(0x303d49).fillRect(14, -19, 12, 3);
+      g.fillStyle(0x95a9b5).fillRect(23, -19, 4, 2);
+      if (!reducedMotion.matches && shootingUntil - time > 240) {
+        g.fillStyle(0xffd166).fillPoints([
+          { x: 27, y: -18 }, { x: 33, y: -22 }, { x: 31, y: -18 },
+          { x: 35, y: -15 }, { x: 28, y: -16 },
+        ], true);
+      }
+    }
     g.restore();
     if (combat) {
       if (combat.protectionTicks > 0) g.lineStyle(2, 0x82b6ff, 0.8).strokeCircle(car.x, car.y, 42);

@@ -25,7 +25,14 @@ cracks, faded road markings, hazard-striped barriers and cyan/violet yard lights
 Armoured car details, gold-core halos, outlined power-up icons, neon tracers and
 small pickup/impact sparks bring the arena to life. A narrower nose/front bumper
 makes car direction easier to read without changing the rectangular collision
-body or handling. The compact HUD sits inside
+body or handling. Original retro top-down cars have distinct bonnets, roofs,
+windows and boots. A tiny driver leans out of the side window during visible
+shots, with a brief muzzle flash (disabled for reduced motion), replacing the
+bonnet gun. Projectile paths and firing behaviour are unchanged.
+Cars have stable ID-based paint colours shared across browsers; your car retains
+a mint outline and "You" label. Faint warm-white headlight beams fade ahead of
+each car and follow its heading, without flashing or affecting gameplay.
+The compact HUD sits inside
 the arena edges with a 20px desktop / 16px mobile inset and fine borders, with
 health shown as a bar.
 
@@ -42,7 +49,18 @@ or lobby picker; failed joins can be retried without reloading.
 Scenery is decorative: no new obstacles or physics/balance changes. All artwork
 is generated locally with Phaser, with the detailed floor baked once into a
 texture and particles capped at 120. Reduced motion disables sparks and pickup
-pulsing, as well as damage shake. Audio is not part of this visual pass.
+pulsing, as well as damage shake.
+
+The supplied `src/assets/gameloop.mp3` loops during play, once the browser
+unlocks audio through interaction. `src/assets/menu.mp3` loops in the lobby,
+help and game menus; switching menus pauses/resumes the appropriate track
+without playing both at once. Initial menu music needs a user interaction
+on browsers that block autoplay. `src/assets/gun.mp3` plays for newly observed
+nearby shots, fading with distance. The menu's Sound button mutes both music
+and effects; background tabs are muted. Returning to the lobby picker stops
+music, and leaving the page stops playback.
+**Mute music** is available in both the main and game menus and pauses only
+music, leaving gunshots enabled. **Unmute music** resumes the appropriate track.
 
 A TypeScript multiplayer top-down car-combat and collection game. Phaser renders;
 standalone Matter.js runs authoritative physics on a Node.js/Colyseus server.
@@ -73,7 +91,8 @@ npm run dev
 ```
 
 Open http://127.0.0.1:5197 in two browser tabs/windows, create a lobby in one and
-join that lobby in the other. Your car is mint; other cars are coral.
+join that lobby in the other. Your car has a mint outline and "You" label;
+cars use varied paint colours.
 
 `npm run dev` starts both the game server (port 2567) and Vite (port 5197).
 Vite proxies `/game` HTTP and WebSocket traffic to the game server, so browsers
@@ -86,7 +105,8 @@ This is a local prototype, not a hardened public deployment.
 - S / Down: brake by applying reverse thrust, then reverse.
 - A / D or Left / Right: steer and accelerate. S / Down takes priority for reversing.
 - H: open help. M: open the game menu while driving.
-- Forward and reverse thrust are tuned 15% lower for gentler driving for humans
+- Forward and reverse thrust are tuned another 25% lower after the initial 15%
+  reduction (36.25% below the original tuning) for gentler driving for humans
   and bots; steering/grip and relative speed-boost strength are unchanged.
 - F / Space: hold to fire the forward-facing gun.
 - Manual respawn/reset controls are removed. Wrecks still respawn automatically

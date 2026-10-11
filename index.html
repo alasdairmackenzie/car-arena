@@ -32,6 +32,8 @@
         </section>
         <button id="play" type="button" autofocus>Play</button>
         <button id="main-menu" type="button" hidden>Back to main menu</button>
+        <button id="audio-toggle" type="button" class="quiet" aria-pressed="false">Sound: on</button>
+        <button id="music-toggle" type="button" class="quiet" aria-pressed="false">Mute music</button>
         <h3>The goal</h3>
       <p id="objective">Collect randomly appearing gold cores before they vanish. First to hold <strong>five</strong> wins; after two minutes the highest score wins, with ties a draw. Late arrivals spectate and queue for the next round.</p>
         <h3>Driving &amp; power-ups</h3>
@@ -56,7 +58,7 @@
         <p id="banner" hidden></p>
         <div id="announce" aria-hidden="true" hidden><span id="announce-kicker"></span><strong id="announce-main"></strong><span id="announce-sub"></span></div>
         <p id="damage-flash" role="status" hidden></p>
-        <canvas id="minimap" width="180" height="112" role="img" aria-label="Arena overview: your car is mint, other cars coral, cores gold, power-ups cyan and harmful pickups red"></canvas>
+        <canvas id="minimap" width="180" height="112" role="img" aria-label="Arena overview: your marker is mint, other cars match their paint, cores gold, power-ups cyan and harmful pickups red"></canvas>
         <div id="touch-controls" aria-label="Touch driving controls">
           <div class="steering-controls">
             <div id="steering-pad" role="slider" tabindex="0" aria-label="Steering" aria-describedby="drive-pad-help" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="steering-knob"></span></div>

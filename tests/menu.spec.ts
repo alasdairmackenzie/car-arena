@@ -8,6 +8,9 @@ test('pregame menu gates joining and help returns focus without rejoining', asyn
   const arena = page.getByRole('region', { name: 'Driving arena' });
   const menu = page.getByRole('dialog');
   await expect(menu).toBeVisible();
+  await page.getByRole('button', { name: 'Mute music', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Unmute music', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await expect(page.getByRole('button', { name: 'Sound: on', exact: true })).toHaveAttribute('aria-pressed', 'false');
   await expect(page.locator('#controls')).toBeVisible();
   await expect(arena).toHaveAttribute('data-connected', 'false');
   await page.waitForTimeout(600);
@@ -28,6 +31,8 @@ test('pregame menu gates joining and help returns focus without rejoining', asyn
   await page.getByRole('button', { name: 'Game menu', exact: true }).click();
   await expect(menu).toBeVisible();
   await expect(page.locator('#menu-note')).toContainText('keeps running');
+  await page.getByRole('button', { name: 'Unmute music', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Mute music', exact: true })).toHaveAttribute('aria-pressed', 'false');
   await page.getByRole('button', { name: 'Back to game' }).click();
   await expect(arena).toBeFocused();
   await expect(arena).toHaveAttribute('data-player', id!);
