@@ -12,17 +12,28 @@ test('mobile touch driving, simultaneous steering, cancellation and rotation', a
     const arena = page.getByRole('region', { name: 'Driving arena' });
     await expect(arena).toHaveAttribute('data-camera', 'follow');
     await expect(page.getByRole('dialog')).toBeHidden();
+    await expect(page.getByRole('button', { name: 'Fire gun' })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Fire gun' })).toBeDisabled();
     await expect(page.getByRole('slider', { name: 'Steering' })).toHaveAttribute('aria-disabled', 'false');
     await expect(page.getByRole('button', { name: 'Handbrake', exact: true })).toHaveCount(0);
     const client = await context.newCDPSession(page);
     const pad = await page.getByRole('slider', { name: 'Steering' }).boundingBox();
     if (!pad) throw new Error('Missing direction pad');
     const touches = [
-      { id: 1, x: pad.x + pad.width / 2, y: pad.y + pad.height / 2 },
+      { id: 1, x: pad.x + pad.width / 2 + 15, y: pad.y + pad.height / 2 + 15 },
     ];
     await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: touches });
+    expect(pad.width).toBeGreaterThanOrEqual(120);
+    await expect(page.getByRole('slider', { name: 'Steering' })).toHaveAttribute('aria-valuetext', 'Forward, straight');
+    touches[0].x += 4;
+    touches[0].y += 20;
+    await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: touches });
+    await expect(page.getByRole('slider', { name: 'Steering' })).toHaveAttribute('aria-valuetext', 'Forward, straight');
     await expect.poll(async () => Number(await arena.getAttribute('data-speed'))).toBeGreaterThan(40);
-    touches[0].x += 30;
+    touches[0].x += 20;
+    await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: touches });
+    await expect(page.getByRole('slider', { name: 'Steering' })).toHaveAttribute('aria-valuenow', '28');
+    touches[0].x += 26;
     await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: touches });
     await expect(page.getByRole('slider', { name: 'Steering' })).toHaveAttribute('aria-valuenow', /[89]\d|100/);
     await expect.poll(async () => Number(await arena.getAttribute('data-angle')), { intervals: [20] }).toBeGreaterThan(-1.3);
@@ -30,11 +41,20 @@ test('mobile touch driving, simultaneous steering, cancellation and rotation', a
     await expect(page.getByRole('slider', { name: 'Steering' })).toHaveAttribute('aria-valuenow', '0');
     await expect(page.locator('button.pressed')).toHaveCount(0);
     const reversePad = (await page.getByRole('slider', { name: 'Steering' }).boundingBox())!;
-    const reverseTouches = [{ id: 3, x: reversePad.x + reversePad.width / 2, y: reversePad.y + reversePad.height * 0.85 }];
+    const reverseTouches = [{ id: 3, x: reversePad.x + reversePad.width / 2, y: reversePad.y + reversePad.height / 2 }];
     const reverseStart = Number(await arena.getAttribute('data-y'));
     await client.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: reverseTouches });
+    reverseTouches[0].y += 45;
+    await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: reverseTouches });
+    await expect(page.getByRole('slider', { name: 'Steering' })).toHaveAttribute('aria-valuetext', 'Reverse, straight');
+    reverseTouches[0].y -= 9;
+    await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: reverseTouches });
+    await expect(page.getByRole('slider', { name: 'Steering' })).toHaveAttribute('aria-valuetext', 'Reverse, straight');
     await expect.poll(async () => Number(await arena.getAttribute('data-y')), { timeout: 10000 })
       .toBeGreaterThan(reverseStart + 30);
+    reverseTouches[0].y -= 8;
+    await client.send('Input.dispatchTouchEvent', { type: 'touchMove', touchPoints: reverseTouches });
+    await expect(page.getByRole('slider', { name: 'Steering' })).toHaveAttribute('aria-valuetext', 'Forward, straight');
     await client.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
     await page.setViewportSize({ width: 844, height: 390 });
     await expect(arena).toHaveAttribute('data-camera', 'follow');

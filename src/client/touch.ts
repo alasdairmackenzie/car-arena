@@ -5,6 +5,7 @@ type Action = 'fire';
 export class TouchInput {
   private readonly actions = new Map<number, Action>();
   private steeringPointer?: number;
+  private steeringOrigin = { x: 0, y: 0 };
   private steering = 0;
   private throttle = 0;
   private readonly heldKeys = new Set<string>();
@@ -56,11 +57,13 @@ export class TouchInput {
     if (!this.enabled || !(event.target instanceof Element)) return;
     const target = event.target.closest<HTMLElement>('#steering-pad, button[data-drive]');
     if (!target || !this.controls.contains(target)) return;
+    if (target instanceof HTMLButtonElement && target.disabled) return;
     event.preventDefault();
     this.focusArena();
     if (target === this.pad) {
       if (this.steeringPointer !== undefined) return;
       this.steeringPointer = event.pointerId;
+      this.steeringOrigin = { x: event.clientX, y: event.clientY };
       this.updateDirection(event.clientX, event.clientY);
     } else {
       const action = target.dataset.drive;
@@ -77,10 +80,17 @@ export class TouchInput {
 
   private updateDirection(x: number, y: number): void {
     const rect = this.pad.getBoundingClientRect();
-    const vertical = Math.max(-1, Math.min(1, (y - rect.y - rect.height / 2) / (rect.height * 0.35)));
-    this.throttle = vertical > 0.4 ? -1 : 1;
-    this.setSteering(Math.max(-1, Math.min(1, (x - rect.x - rect.width / 2) / (rect.width * 0.35))));
-    this.knob.style.transform = `translate(${this.steering * 30}px, ${vertical * 30}px)`;
+    const dx = x - this.steeringOrigin.x;
+    const dy = y - this.steeringOrigin.y;
+    const deadZone = 6;
+    const travel = 48;
+    const turn = Math.min(1, Math.max(0, Math.abs(dx) - deadZone) / (travel - deadZone));
+    this.throttle = dy >= (this.throttle < 0 ? 32 : 44) ? -1 : 1;
+    this.setSteering(Math.sign(dx) * turn ** 1.5);
+    const knobLimit = (rect.width - this.knob.offsetWidth) / 2;
+    const knobX = Math.max(-knobLimit, Math.min(knobLimit, x - rect.x - rect.width / 2));
+    const knobY = Math.max(-knobLimit, Math.min(knobLimit, y - rect.y - rect.height / 2));
+    this.knob.style.transform = `translate(${knobX}px, ${knobY}px)`;
   }
 
   private setSteering(value: number): void {

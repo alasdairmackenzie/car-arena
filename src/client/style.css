@@ -126,11 +126,11 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
   #touch-controls { display: flex; position: absolute; bottom: 80px; left: 16px; right: 16px; justify-content: space-between; align-items: start; gap: 16px; pointer-events: none; }
   #touch-controls button, #steering-pad { touch-action: none; user-select: none; -webkit-user-select: none; pointer-events: auto; }
   .steering-controls { display: grid; gap: 4px; text-align: center; font-size: 10px; color: #b4c2cd; }
-  #steering-pad { width: 96px; height: 96px; border: 2px solid #72e4b0; background: #101820bb; border-radius: 50%; display: grid; place-items: center; }
+  #steering-pad { width: 120px; height: 120px; border: 2px solid #72e4b0; background: #101820bb; border-radius: 50%; display: grid; place-items: center; }
   #steering-pad:focus-visible { outline: 3px solid #ffd166; outline-offset: 3px; }
   #steering-pad[aria-disabled="true"] { opacity: 0.5; }
   #steering-knob { width: 36px; height: 36px; border-radius: 50%; background: #72e4b0; pointer-events: none; }
-  .pedal-controls { display: grid; grid-template-columns: 96px; gap: 6px; }
+  .pedal-controls { display: grid; grid-template-columns: 96px; gap: 6px; margin-top: 12px; }
   #touch-controls button { min-height: 96px; padding: 12px; font-size: 16px; font-weight: 900; background: #101820dd; }
   #touch-controls button.pressed { background: #72e4b0; color: #101820; }
   footer { margin-top: 8px; }

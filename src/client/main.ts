@@ -61,7 +61,8 @@ element('mode').textContent = solo ? 'SOLO PLAYGROUND' : 'SHARED ARENA';
 element('combat-hud').hidden = solo;
 element('objective').hidden = solo;
 element('fire-controls').hidden = solo;
-if (solo) element('touch-controls').querySelector<HTMLButtonElement>('[data-drive="fire"]')!.hidden = true;
+const fireButton = element('touch-controls').querySelector<HTMLButtonElement>('[data-drive="fire"]')!;
+if (solo) fireButton.title = 'Weapons are available in lobbies, not solo driving practice.';
 
 function reportError(message: string): void {
   console.error(message);
@@ -272,6 +273,7 @@ class ArenaScene extends Phaser.Scene {
     const currentGame = this.network?.snapshot() ?? emptyGame();
     const currentOwn = currentGame.players.find(player => player.id === this.network?.sessionId);
     this.touchController.setEnabled(this.started && !menu.open && !errorDialog.open && (solo || Boolean(this.network?.connected && currentGame.phase === 'active' && currentOwn?.alive && !currentOwn.spectator)));
+    if (solo) fireButton.disabled = true;
     const keyboard = this.inputController.read();
     const touch = this.touchController.read();
     const controls = {
@@ -485,7 +487,11 @@ class ArenaScene extends Phaser.Scene {
       camera.centerOn(own.x, own.y);
     } else {
       camera.removeBounds();
-      camera.setZoom(Math.min(camera.width / ARENA.width, camera.height / ARENA.height));
+      const wallTrim = mobile.matches ? 0 : ARENA.wall / 2;
+      camera.setZoom(Math.min(
+        camera.width / (ARENA.width - wallTrim * 2),
+        camera.height / (ARENA.height - wallTrim * 2),
+      ));
       camera.centerOn(ARENA.width / 2, ARENA.height / 2);
     }
     return following;
@@ -565,9 +571,25 @@ class ArenaScene extends Phaser.Scene {
     g.save();
     g.translateCanvas(car.x, car.y);
     g.rotateCanvas(car.angle);
-    g.fillStyle(0x070e14).fillRoundedRect(-CAR.length / 2 + 3, -CAR.width / 2 + 4, CAR.length, CAR.width, 7);
+    const body = [
+      { x: -CAR.length / 2, y: -CAR.width / 2 + 5 },
+      { x: -CAR.length / 2 + 5, y: -CAR.width / 2 },
+      { x: 8, y: -CAR.width / 2 },
+      { x: CAR.length / 2 - 4, y: -11 },
+      { x: CAR.length / 2, y: -7 },
+      { x: CAR.length / 2, y: 7 },
+      { x: CAR.length / 2 - 4, y: 11 },
+      { x: 8, y: CAR.width / 2 },
+      { x: -CAR.length / 2 + 5, y: CAR.width / 2 },
+      { x: -CAR.length / 2, y: CAR.width / 2 - 5 },
+    ];
+    g.save();
+    g.translateCanvas(3, 4);
+    g.fillStyle(0x070e14).fillPoints(body, true);
+    g.restore();
     for (const x of [-22, 22]) {
-      for (const y of [-17, 17]) {
+      const wheelOffset = x > 0 ? 14 : 17;
+      for (const y of [-wheelOffset, wheelOffset]) {
         g.save();
         g.translateCanvas(x, y);
         if (x > 0) g.rotateCanvas(car.steering * HANDLING.steeringAngle);
@@ -575,17 +597,17 @@ class ArenaScene extends Phaser.Scene {
         g.restore();
       }
     }
-    g.fillStyle(own ? 0x72e4b0 : 0xff917e).fillRoundedRect(-CAR.length / 2, -CAR.width / 2, CAR.length, CAR.width, 7);
-    g.lineStyle(2, 0x101820).strokeRoundedRect(-CAR.length / 2, -CAR.width / 2, CAR.length, CAR.width, 7);
+    g.fillStyle(own ? 0x72e4b0 : 0xff917e).fillPoints(body, true);
+    g.lineStyle(2, 0x101820).strokePoints(body, true);
     g.fillStyle(0x22303a).fillRoundedRect(-10, -12, 23, 24, 3);
     g.lineStyle(1, 0x94b2bc, 0.65).lineBetween(-7, -9, 8, -9);
     g.fillStyle(0x0b1218).fillRect(14, -10, 10, 20);
     g.fillStyle(own ? 0x72e4b0 : 0xff917e, 0.7).fillRect(16, -8, 6, 16);
-    g.fillStyle(0xc3c8c5).fillRect(-30, -13, 4, 26).fillRect(27, -13, 4, 26);
+    g.fillStyle(0xc3c8c5).fillRect(-30, -13, 4, 26).fillRect(27, -8, 4, 16);
     g.lineStyle(2, 0x17232a).lineBetween(-23, -9, -15, -5).lineBetween(-21, 8, -14, 10);
     g.fillStyle(0x0a1117).fillRect(-25, -12, 3, 24);
     g.fillStyle(0xc69a44).fillRect(-20, -3, 5, 6);
-    g.fillStyle(0xc4f9e1).fillRect(22, -12, 5, 8).fillRect(22, 4, 5, 8);
+    g.fillStyle(0xc4f9e1).fillRect(22, -9, 5, 5).fillRect(22, 4, 5, 5);
     g.fillStyle(0xff6b70).fillRect(-29, -12, 4, 7).fillRect(-29, 5, 4, 7);
     if (combat) g.fillStyle(0xdeeaf2).fillRect(15, -3, 22, 6);
     g.restore();

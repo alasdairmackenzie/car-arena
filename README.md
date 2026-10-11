@@ -23,14 +23,18 @@ the normal respawn countdown continues.
 The game now has an after-dark salvage-yard theme: textured asphalt, oil stains,
 cracks, faded road markings, hazard-striped barriers and cyan/violet yard lights.
 Armoured car details, gold-core halos, outlined power-up icons, neon tracers and
-small pickup/impact sparks bring the arena to life. The compact HUD sits inside
+small pickup/impact sparks bring the arena to life. A narrower nose/front bumper
+makes car direction easier to read without changing the rectangular collision
+body or handling. The compact HUD sits inside
 the arena edges with a 20px desktop / 16px mobile inset and fine borders, with
 health shown as a bar.
 
 Desktop play fits the arena to the viewport at its original 8:5 aspect ratio:
 full width when height allows, otherwise height-limited and centered on both
 axes. Container resizes immediately refresh the canvas and camera without
-restarting the round. Mobile retains its full-height, car-following view.
+restarting the round. The desktop camera trims the outer wall edges for slimmer
+concrete borders, without hiding playable space or changing collisions.
+Mobile retains its full-height, car-following view and original walls.
 Errors appear in a modal alert with a **Continue** button (or Escape to dismiss),
 not below the game. Dismissal clears the message and returns focus to the game
 or lobby picker; failed joins can be retried without reloading.
@@ -82,6 +86,8 @@ This is a local prototype, not a hardened public deployment.
 - S / Down: brake by applying reverse thrust, then reverse.
 - A / D or Left / Right: steer and accelerate. S / Down takes priority for reversing.
 - Space: handbrake.
+- Forward and reverse thrust are tuned 15% lower for gentler driving for humans
+  and bots; steering/grip and relative speed-boost strength are unchanged.
 - F: hold to fire the forward-facing gun.
 - Manual respawn/reset controls are removed. Wrecks still respawn automatically
   after three seconds with dropped cores.
@@ -185,9 +191,13 @@ Spectators retain the whole-arena overview. Desktop retains its full-arena view.
 On mobile, power-up status and health sit beneath the direction pad and FIRE
 button; the timer and score remain at the top.
 Desktop also shows FIRE above the health panel; hold it with the mouse or use F.
+FIRE remains visible but disabled in solo driving practice, which has no weapons.
 
-Hold the left direction pad: center/up accelerates, left/right steers and
-accelerates, and down brakes then reverses. Release to coast. There are no
+Hold anywhere on the larger left direction pad to drive straight; that touch
+becomes the steering centre. Slide left/right to steer, with a 6px dead zone
+and gradual steering up to full lock at 48px. Pull down 44px from the starting
+touch to brake then reverse; move back above 32px to drive forward again.
+Release to coast. There are no
 separate GO/REV or DRIFT buttons. Hold FIRE for the gun alongside the direction
 pad. Hard forward turns automatically reduce rear grip gradually above
 180 px/s, reaching the full subtle effect at 360 px/s with full steering.

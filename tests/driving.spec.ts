@@ -35,7 +35,14 @@ test('desktop arena fits the viewport and stays centered without stretching', as
     expect(Math.abs(box.y - (viewport.height - box.height) / 2)).toBeLessThan(2);
     await expect.poll(async () => (await arena.locator('canvas').boundingBox())?.width).toBeCloseTo(box.width, 0);
     await expect.poll(async () => Number(await arena.getAttribute('data-camera-zoom')))
-      .toBeCloseTo(box.width / 1440, 2);
+      .toBeCloseTo(Math.min(box.width / 1400, box.height / 860), 2);
+    const zoom = Number(await arena.getAttribute('data-camera-zoom'));
+    const horizontalTrim = (1440 - box.width / zoom) / 2;
+    const verticalTrim = (900 - box.height / zoom) / 2;
+    expect(horizontalTrim).toBeGreaterThan(10);
+    expect(verticalTrim).toBeGreaterThan(10);
+    expect(horizontalTrim).toBeLessThan(40);
+    expect(verticalTrim).toBeLessThan(40);
     const overflow = await page.evaluate(() => ({
       x: document.documentElement.scrollWidth - innerWidth,
       y: document.documentElement.scrollHeight - innerHeight,
