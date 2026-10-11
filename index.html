@@ -31,10 +31,11 @@
           </form>
         </section>
         <button id="play" type="button" autofocus>Play</button>
+        <button id="main-menu" type="button" hidden>Back to main menu</button>
         <h3>The goal</h3>
       <p id="objective">Collect randomly appearing gold cores before they vanish. First to hold <strong>five</strong> wins; after two minutes the highest score wins, with ties a draw. Late arrivals spectate and queue for the next round.</p>
         <h3>Driving &amp; power-ups</h3>
-        <p id="controls"><kbd>W</kbd><kbd>S</kbd> throttle / reverse &nbsp; <kbd>A</kbd><kbd>D</kbd> steer &nbsp; <kbd>Space</kbd> handbrake <span id="fire-controls">&nbsp; <kbd>F</kbd> fire forward<br />Square pickups: cyan ring = shield; lime chevrons = speed; purple pulse = disruptor; red X = lose 1 health unless protected. Drive over them to activate.</span><br />Arrow keys also work. Click the arena to drive. On touch screens, drag the steering pad and hold the driving buttons.</p>
+        <p id="controls"><kbd>W</kbd> drive &nbsp; <kbd>A</kbd><kbd>D</kbd> steer &nbsp; <kbd>S</kbd> reverse <span id="fire-controls">&nbsp; <kbd>F</kbd> fire<br />Pickups: cyan = shield; lime = speed; purple = disruptor; red = damage.</span></p>
       <section id="combat-hud" aria-label="Round progress">
         <h3>Standings</h3>
         <p id="standings" aria-label="Standings"></p>
@@ -44,9 +45,10 @@
       <div class="arena-wrap">
         <div id="game" tabindex="0" role="region" aria-label="Driving arena" aria-describedby="controls objective"></div>
         <div id="arena-hud">
-          <div class="timer-panel"><span id="timer-label">WAITING</span><strong id="timer" aria-label="Round timer">0:00</strong><button id="help" type="button">Play / how to play</button></div>
+          <div class="timer-panel"><span id="timer-label">WAITING</span><strong id="timer" aria-label="Round timer">0:00</strong></div>
+          <button id="help" type="button">Play / how to play</button>
           <div class="score-panel"><span id="our-name">Not joined</span><strong id="our-score" aria-label="Your score">0 / 5 CORES</strong><progress id="core-progress" aria-labelledby="our-score" max="5" value="0"></progress><span id="win-total">0 total wins</span></div>
-          <div class="round-panel"><span>ROUND</span><strong id="round-number">1</strong><span id="players">Not joined</span></div>
+          <div class="round-panel"><span id="players">Not joined</span></div>
           <div class="power-up-panel"><span>POWER-UPS</span><strong id="power-up-status" aria-label="Your power-ups">No active power-ups</strong></div>
           <div class="health-panel"><label for="health">HEALTH</label><progress id="health" max="100" value="100"></progress></div>
         </div>
@@ -57,18 +59,19 @@
         <canvas id="minimap" width="180" height="112" role="img" aria-label="Arena overview: your car is mint, other cars coral, cores gold, power-ups cyan and harmful pickups red"></canvas>
         <div id="touch-controls" aria-label="Touch driving controls">
           <div class="steering-controls">
-            <div id="steering-pad" role="slider" tabindex="0" aria-label="Steering" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0"><span id="steering-knob"></span></div>
-            <span>STEER</span>
+            <div id="steering-pad" role="slider" tabindex="0" aria-label="Steering" aria-describedby="drive-pad-help" aria-valuemin="-100" aria-valuemax="100" aria-valuenow="0"><span id="steering-knob"></span></div>
+            <span id="drive-pad-help">UP / SIDES: DRIVE<br />DOWN: REVERSE</span>
           </div>
           <div class="pedal-controls">
             <button type="button" data-drive="fire" aria-label="Fire gun">FIRE</button>
-            <button type="button" data-drive="handbrake" aria-label="Handbrake">DRIFT</button>
-            <button type="button" data-drive="reverse" aria-label="Brake and reverse">REV</button>
-            <button type="button" data-drive="throttle" aria-label="Accelerate">GO</button>
           </div>
         </div>
       </div>
-      <p id="error" role="alert" hidden></p>
+      <dialog id="error-dialog" role="alertdialog" aria-labelledby="error-title" aria-describedby="error">
+        <h2 id="error-title">Something went wrong</h2>
+        <p id="error" role="alert" hidden></p>
+        <form method="dialog"><button id="error-continue" type="submit" autofocus>Continue</button></form>
+      </dialog>
     </main>
     <script type="module" src="/src/client/main.ts"></script>
   </body>

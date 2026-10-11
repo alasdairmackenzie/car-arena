@@ -1,11 +1,13 @@
 import { idleInput, type CarInput } from '../shared/simulation';
 
-type Action = 'throttle' | 'reverse' | 'handbrake' | 'fire';
+type Action = 'fire';
 
 export class TouchInput {
   private readonly actions = new Map<number, Action>();
   private steeringPointer?: number;
   private steering = 0;
+  private throttle = 0;
+  private readonly heldKeys = new Set<string>();
   private enabled = false;
   private readonly buttons: HTMLButtonElement[];
   private readonly knob: HTMLElement;
@@ -43,9 +45,9 @@ export class TouchInput {
     if (!this.enabled || document.hidden) return idleInput();
     const active = new Set(this.actions.values());
     return {
-      throttle: Number(active.has('throttle')) - Number(active.has('reverse')),
+      throttle: this.throttle,
       steering: this.steering,
-      handbrake: active.has('handbrake'),
+      handbrake: false,
       fire: active.has('fire'),
     };
   }
@@ -59,10 +61,10 @@ export class TouchInput {
     if (target === this.pad) {
       if (this.steeringPointer !== undefined) return;
       this.steeringPointer = event.pointerId;
-      this.updateSteering(event.clientX);
+      this.updateDirection(event.clientX, event.clientY);
     } else {
       const action = target.dataset.drive;
-      if (action !== 'throttle' && action !== 'reverse' && action !== 'handbrake' && action !== 'fire') throw new Error(`Unknown touch action: ${action}`);
+      if (action !== 'fire') throw new Error(`Unknown touch action: ${action}`);
       this.actions.set(event.pointerId, action);
       target.classList.add('pressed');
     }
@@ -70,24 +72,29 @@ export class TouchInput {
   };
 
   private readonly move = (event: PointerEvent): void => {
-    if (event.pointerId === this.steeringPointer) this.updateSteering(event.clientX);
+    if (event.pointerId === this.steeringPointer) this.updateDirection(event.clientX, event.clientY);
   };
 
-  private updateSteering(x: number): void {
+  private updateDirection(x: number, y: number): void {
     const rect = this.pad.getBoundingClientRect();
+    const vertical = Math.max(-1, Math.min(1, (y - rect.y - rect.height / 2) / (rect.height * 0.35)));
+    this.throttle = vertical > 0.4 ? -1 : 1;
     this.setSteering(Math.max(-1, Math.min(1, (x - rect.x - rect.width / 2) / (rect.width * 0.35))));
+    this.knob.style.transform = `translate(${this.steering * 30}px, ${vertical * 30}px)`;
   }
 
   private setSteering(value: number): void {
     this.steering = value;
     this.knob.style.transform = `translateX(${value * 30}px)`;
     this.pad.setAttribute('aria-valuenow', String(Math.round(value * 100)));
+    this.pad.setAttribute('aria-valuetext', `${this.throttle < 0 ? 'Reverse' : this.throttle > 0 ? 'Forward' : 'Coasting'}, ${value < 0 ? 'left' : value > 0 ? 'right' : 'straight'}`);
   }
 
   private readonly release = (event: PointerEvent): void => {
     this.actions.delete(event.pointerId);
     if (event.pointerId === this.steeringPointer) {
       this.steeringPointer = undefined;
+      this.throttle = 0;
       this.setSteering(0);
     }
     for (const button of this.buttons) {
@@ -96,16 +103,29 @@ export class TouchInput {
   };
 
   private readonly key = (event: KeyboardEvent): void => {
-    if (!this.enabled || !['ArrowLeft', 'ArrowRight', 'Home'].includes(event.key)) return;
+    if (!this.enabled || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Home'].includes(event.key)) return;
     event.preventDefault();
-    this.setSteering(event.key === 'ArrowLeft' ? -1 : event.key === 'ArrowRight' ? 1 : 0);
+    if (event.key === 'Home') this.heldKeys.clear();
+    else this.heldKeys.add(event.key);
+    this.updateKeys();
   };
 
-  private readonly keyUp = (): void => { this.setSteering(0); };
+  private updateKeys(): void {
+    this.throttle = this.heldKeys.has('ArrowDown') ? -1 : this.heldKeys.size ? 1 : 0;
+    this.setSteering(Number(this.heldKeys.has('ArrowRight')) - Number(this.heldKeys.has('ArrowLeft')));
+  }
+
+  private readonly keyUp = (event: KeyboardEvent): void => {
+    if (!this.heldKeys.has(event.key)) return;
+    this.heldKeys.delete(event.key);
+    this.updateKeys();
+  };
   private readonly visibility = (): void => { if (document.hidden) this.clear(); };
   private readonly clear = (): void => {
     this.actions.clear();
     this.steeringPointer = undefined;
+    this.heldKeys.clear();
+    this.throttle = 0;
     this.setSteering(0);
     for (const button of this.buttons) button.classList.remove('pressed');
   };

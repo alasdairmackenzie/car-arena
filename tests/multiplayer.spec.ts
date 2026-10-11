@@ -94,6 +94,10 @@ test('connection loss is visible and does not switch to a solo world', async ({ 
   await expect(page.getByRole('alert')).toContainText('Disconnected', { timeout: 15000 });
   await expect(arena).toHaveAttribute('data-connected', 'false');
   await expect(arena).toHaveAttribute('data-players', '0');
+  await expect(page.getByRole('alertdialog')).toBeVisible();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(page.getByRole('alertdialog')).toBeHidden();
+  await expect(page.getByRole('alert')).toBeHidden();
 });
 
 test('ramming transfers motion to another browser car', async ({ browser }) => {
@@ -139,4 +143,15 @@ test('a failed join reports an error instead of launching local physics', async 
   const arena = page.getByRole('region', { name: 'Driving arena' });
   await expect(arena).toHaveAttribute('data-connected', 'false');
   await expect(arena).toHaveAttribute('data-players', '0');
+  const dialog = page.getByRole('alertdialog');
+  await expect(dialog).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Continue', exact: true })).toBeFocused();
+  await page.getByRole('button', { name: 'Continue', exact: true }).click();
+  await expect(dialog).toBeHidden();
+  await expect(page.locator('#error')).toHaveText('');
+  await expect(page.locator('#game-menu')).toBeVisible();
+  await page.unroute('**/game/**');
+  await createLobby(page);
+  await expect(arena).toHaveAttribute('data-connected', 'true');
+  await expect(page.getByRole('alert')).toBeHidden();
 });

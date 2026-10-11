@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import Matter from 'matter-js';
-import { ARENA, idleInput, Simulation } from './simulation';
+import { ARENA, HANDLING, automaticDrift, idleInput, Simulation } from './simulation';
 
 function world(): Simulation {
   const simulation = new Simulation();
@@ -13,6 +13,36 @@ function advance(simulation: Simulation, steps: number): void {
 }
 
 describe('vehicle simulation', () => {
+  it('smoothly adds automatic drift only to hard forward turns at speed', () => {
+    expect(automaticDrift(HANDLING.driftStartSpeed, 1, 1)).toBe(0);
+    expect(automaticDrift(500, HANDLING.driftStartSteering, 1)).toBe(0);
+    expect(automaticDrift(270, 1, 1)).toBeCloseTo(0.5);
+    expect(automaticDrift(360, 0.825, 1)).toBeCloseTo(0.5);
+    expect(automaticDrift(360, -1, 1)).toBe(1);
+    expect(automaticDrift(500, 1, 1)).toBe(1);
+    expect(automaticDrift(500, 0, 1)).toBe(0);
+    expect(automaticDrift(500, 1, 0)).toBe(0);
+    expect(automaticDrift(500, 1, -1)).toBe(0);
+    expect(automaticDrift(-500, 1, 1)).toBe(0);
+    expect(HANDLING.driftRearGrip).toBeGreaterThan(HANDLING.handbrakeGrip);
+  });
+
+  it('automatic drifting retains more sideways momentum without handbrake braking', () => {
+    const grip = world();
+    const drift = world();
+    for (const simulation of [grip, drift]) {
+      Matter.Body.setVelocity(simulation.cars.get('car')!.body, { x: 2, y: -6 });
+    }
+    grip.setInput('car', { ...idleInput(), steering: 1 });
+    drift.setInput('car', { ...idleInput(), throttle: 1, steering: 1 });
+    advance(grip, 1);
+    advance(drift, 1);
+    const normalVelocity = Matter.Body.getVelocity(grip.cars.get('car')!.body);
+    const driftVelocity = Matter.Body.getVelocity(drift.cars.get('car')!.body);
+    expect(driftVelocity.x).toBeGreaterThan(normalVelocity.x);
+    expect(-driftVelocity.y).toBeGreaterThan(-normalVelocity.y);
+  });
+
   it('stays still without input', () => {
     const simulation = world();
     advance(simulation, 120);

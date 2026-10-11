@@ -19,6 +19,7 @@ const arena = element('game');
 const speed = element('speed');
 const status = element('status');
 const error = element('error');
+const errorDialog = element<HTMLDialogElement>('error-dialog');
 const players = element('players');
 const health = element<HTMLProgressElement>('health');
 const coreProgress = element<HTMLProgressElement>('core-progress');
@@ -34,7 +35,6 @@ const timerLabel = element('timer-label');
 const ourScore = element('our-score');
 const ourName = element('our-name');
 const winTotal = element('win-total');
-const roundNumber = element('round-number');
 const powerUpStatus = element('power-up-status');
 const solo = new URLSearchParams(window.location.search).get('solo') === '1';
 const mobile = window.matchMedia('(max-width: 600px), (pointer: coarse)');
@@ -42,6 +42,7 @@ const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 const menu = element<HTMLDialogElement>('game-menu');
 const play = element<HTMLButtonElement>('play');
 const help = element<HTMLButtonElement>('help');
+const mainMenu = element<HTMLButtonElement>('main-menu');
 const lobbyPicker = element('lobby-picker');
 const lobbyList = element<HTMLUListElement>('lobby-list');
 const lobbyEmpty = element('lobby-empty');
@@ -66,7 +67,15 @@ function reportError(message: string): void {
   console.error(message);
   error.hidden = false;
   error.textContent = message;
+  if (!errorDialog.open) errorDialog.showModal();
 }
+
+errorDialog.addEventListener('close', () => {
+  error.hidden = true;
+  error.textContent = '';
+  if (menu.open) (lobbyPicker.hidden ? play : lobbyRefresh).focus();
+  else arena.focus();
+});
 
 function resultTitle(game: GameSnapshot, own?: PlayerSnapshot): string {
   if (game.result === 'draw') return 'Draw!';
@@ -94,6 +103,7 @@ class ArenaScene extends Phaser.Scene {
   private lastBigText = '';
   private lastDamageSequence?: number;
   private damageFlashUntil = 0;
+  private damageAnimation?: Animation;
   private readonly effects = new ScrapyardEffects();
   private previousVisualPlayers = new Map<string, PlayerSnapshot>();
   private started = false;
@@ -111,7 +121,17 @@ class ArenaScene extends Phaser.Scene {
     arena.dataset.theme = 'neon-scrapyard';
     this.inputController = new DrivingInput(arena);
     this.touchController = new TouchInput(element('touch-controls'), element('steering-pad'), () => arena.focus());
+    const resizeObserver = new ResizeObserver(() => {
+      this.scale.getParentBounds();
+      this.scale.refresh();
+      const game = this.network?.snapshot() ?? emptyGame();
+      const ownId = solo ? 'local' : this.network?.sessionId;
+      const own = (this.simulation?.snapshot() ?? game.players).find(car => car.id === ownId);
+      this.updateCamera(own, game.players.find(player => player.id === ownId));
+    });
+    resizeObserver.observe(arena);
     play.addEventListener('click', this.startPlaying);
+    mainMenu.addEventListener('click', this.backToMainMenu);
     help.addEventListener('click', this.openMenu);
     menu.addEventListener('close', this.closeMenu);
     lobbyList.addEventListener('click', this.joinLobby);
@@ -125,9 +145,12 @@ class ArenaScene extends Phaser.Scene {
       }, 3000);
     }
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      resizeObserver.disconnect();
+      this.damageAnimation?.cancel();
       this.inputController.destroy();
       this.touchController.destroy();
       play.removeEventListener('click', this.startPlaying);
+      mainMenu.removeEventListener('click', this.backToMainMenu);
       help.removeEventListener('click', this.openMenu);
       menu.removeEventListener('close', this.closeMenu);
       lobbyList.removeEventListener('click', this.joinLobby);
@@ -140,8 +163,10 @@ class ArenaScene extends Phaser.Scene {
   }
 
   private readonly openMenu = (): void => { menu.showModal(); };
+  private readonly backToMainMenu = (): void => { window.location.reload(); };
   private readonly closeMenu = (): void => {
-    if (this.started) arena.focus();
+    if (errorDialog.open) element('error-continue').focus();
+    else if (this.started) arena.focus();
     else help.focus();
   };
   private readonly refreshLobbies = (): void => {
@@ -209,8 +234,9 @@ class ArenaScene extends Phaser.Scene {
     lobbyPicker.hidden = true;
     play.hidden = false;
     play.textContent = 'Back to game';
-    help.textContent = 'Help / standings';
-    element('menu-title').textContent = 'How to play';
+    help.textContent = 'Game menu';
+    mainMenu.hidden = false;
+    element('menu-title').textContent = 'Game menu';
     element('menu-note').textContent = 'The online round keeps running while this menu is open.';
   }
 
@@ -218,9 +244,9 @@ class ArenaScene extends Phaser.Scene {
     if (this.started || !this.network) return;
     this.markStarted();
     this.network.connect(target).catch(cause => {
-      reportError(`Could not join the arena: ${cause instanceof Error ? cause.message : String(cause)}. Pick another lobby or create one.`);
       status.textContent = 'Connection failed. No local fallback is running.';
       this.returnToPicker();
+      reportError(`Could not join the arena: ${cause instanceof Error ? cause.message : String(cause)}. Pick another lobby or create one.`);
     });
     menu.close();
   }
@@ -231,6 +257,7 @@ class ArenaScene extends Phaser.Scene {
     document.querySelector('main')?.classList.remove('playing');
     lobbyPicker.hidden = false;
     play.hidden = true;
+    mainMenu.hidden = true;
     help.textContent = 'Play / how to play';
     element('menu-title').textContent = 'Welcome to the scrapyard';
     element('menu-note').textContent = "Pick a lobby or create your own. You won't join a round until then.";
@@ -244,7 +271,7 @@ class ArenaScene extends Phaser.Scene {
   update(_time: number, delta: number): void {
     const currentGame = this.network?.snapshot() ?? emptyGame();
     const currentOwn = currentGame.players.find(player => player.id === this.network?.sessionId);
-    this.touchController.setEnabled(this.started && !menu.open && (solo || Boolean(this.network?.connected && currentGame.phase === 'active' && currentOwn?.alive && !currentOwn.spectator)));
+    this.touchController.setEnabled(this.started && !menu.open && !errorDialog.open && (solo || Boolean(this.network?.connected && currentGame.phase === 'active' && currentOwn?.alive && !currentOwn.spectator)));
     const keyboard = this.inputController.read();
     const touch = this.touchController.read();
     const controls = {
@@ -276,20 +303,28 @@ class ArenaScene extends Phaser.Scene {
     const combatOwn = game.players.find(car => car.id === ownId);
     if (combatOwn && this.lastDamageSequence !== combatOwn.damageSequence) {
       if (this.lastDamageSequence !== undefined && combatOwn.damageSequence > this.lastDamageSequence) {
-        damageFlash.textContent = combatOwn.damageReason;
-        this.damageFlashUntil = performance.now() + 1300;
-        if (!reducedMotion.matches) this.cameras.main.shake(180, 0.003, false);
+        damageFlash.textContent = combatOwn.alive ? combatOwn.damageReason : "You've been scrapped";
+        damageFlash.dataset.kind = combatOwn.alive ? 'hit' : 'scrapped';
+        this.damageFlashUntil = performance.now() + 1600;
+        damageFlash.hidden = false;
+        this.damageAnimation?.cancel();
+        if (!reducedMotion.matches) {
+          this.damageAnimation = damageFlash.animate([
+            { transform: 'translate(-50%, -50%) scale(1.35) rotate(-3deg)', offset: 0 },
+            { transform: 'translate(-50%, -50%) scale(0.96) rotate(1deg)', offset: 0.65 },
+            { transform: 'translate(-50%, -50%) scale(1) rotate(0deg)', offset: 1 },
+          ], { duration: 320, easing: 'ease-out' });
+          this.cameras.main.shake(180, 0.003, false);
+        }
       }
       this.lastDamageSequence = combatOwn.damageSequence;
     }
     const flashRemaining = this.damageFlashUntil - performance.now();
     damageFlash.hidden = flashRemaining <= 0 || !this.network?.connected || Boolean(combatOwn?.spectator);
-    damageFlash.style.opacity = String(Math.min(0.85, Math.max(0, flashRemaining / 400)));
+    if (damageFlash.hidden || reducedMotion.matches) this.damageAnimation?.cancel();
+    damageFlash.style.opacity = String(Math.min(1, Math.max(0, flashRemaining / 400)));
     const camera = this.cameras.main;
-    const following = mobile.matches && own && !combatOwn?.spectator;
-    camera.setBounds(0, 0, ARENA.width, ARENA.height);
-    camera.setZoom(following ? 1 : Math.min(camera.width / ARENA.width, camera.height / ARENA.height));
-    camera.centerOn(following ? own.x : ARENA.width / 2, following ? own.y : ARENA.height / 2);
+    const following = this.updateCamera(own, combatOwn);
     const g = this.graphics;
     g.clear();
     for (const player of game.players) {
@@ -441,6 +476,21 @@ class ArenaScene extends Phaser.Scene {
     context.strokeRect(view.x * sx, view.y * sy, view.width * sx, view.height * sy);
   }
 
+  private updateCamera(own?: CarSnapshot, combatOwn?: PlayerSnapshot): boolean {
+    const camera = this.cameras.main;
+    const following = Boolean(mobile.matches && own && !combatOwn?.spectator);
+    if (following && own) {
+      camera.setBounds(0, 0, ARENA.width, ARENA.height);
+      camera.setZoom(1);
+      camera.centerOn(own.x, own.y);
+    } else {
+      camera.removeBounds();
+      camera.setZoom(Math.min(camera.width / ARENA.width, camera.height / ARENA.height));
+      camera.centerOn(ARENA.width / 2, ARENA.height / 2);
+    }
+    return following;
+  }
+
   private renderAnnouncement(game: GameSnapshot, own: PlayerSnapshot | undefined, seconds: number): void {
     const kind = game.phase === 'countdown' ? 'countdown'
       : game.phase === 'results' ? (game.result !== 'draw' && game.winner === own?.id ? 'win' : 'results')
@@ -482,7 +532,6 @@ class ArenaScene extends Phaser.Scene {
     timerLabel.textContent = game.phase === 'active' ? 'TIME LEFT' :
       game.phase === 'countdown' ? 'STARTS IN' : game.phase === 'results' ? 'NEXT ROUND' : 'WAITING';
     ourName.textContent = own?.name ?? 'Connecting...';
-    roundNumber.textContent = String(game.round);
     ourScore.textContent = own?.spectator ? `QUEUE #${own.queuePosition}` : `${own?.cores ?? 0} / 5 CORES`;
     winTotal.textContent = `${own?.wins ?? 0} total wins`;
     this.renderAnnouncement(game, own, seconds);

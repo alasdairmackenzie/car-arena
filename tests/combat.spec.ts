@@ -44,7 +44,11 @@ test('collect a gold core, shoot another car, drop its core and respawn empty', 
     ).toBe(0);
 
     await arenaA.click();
-    await shooter.keyboard.down('f');
+    const fireButton = shooter.getByRole('button', { name: 'Fire gun' });
+    await expect(fireButton).toBeVisible();
+    await expect(fireButton).toBeEnabled();
+    await fireButton.hover();
+    await shooter.mouse.down();
     await expect.poll(async () =>
       (await game(target)).players.find(player => player.id === targetId)?.health,
     ).toBeLessThan(100);
@@ -53,7 +57,10 @@ test('collect a gold core, shoot another car, drop its core and respawn empty', 
     await expect.poll(async () =>
       (await game(target)).players.find(player => player.id === targetId)?.alive,
     ).toBe(false);
-    await shooter.keyboard.up('f');
+    await expect(target.locator('#damage-flash')).toHaveText("You've been scrapped");
+    await expect(target.locator('#damage-flash')).toBeVisible();
+    await expect(target.locator('#damage-flash')).toHaveAttribute('data-kind', 'scrapped');
+    await shooter.mouse.up();
     await expect(target.locator('#our-score')).toHaveText('0 / 5 CORES');
     await expect(target.getByRole('progressbar', { name: 'HEALTH', exact: true })).toHaveAttribute('value', '0');
     await expect(target.locator('#banner')).toContainText('Destroyed');
@@ -132,7 +139,8 @@ test('countdown, spectator queue, core expiry and arena HUD with event feed', as
   const arena = page.getByRole('region', { name: 'Driving arena' });
   await expect(arena).toHaveAttribute('data-players', '1');
   await expect(page.locator('#timer-label')).toHaveText('STARTS IN');
-  await expect(page.locator('#round-number')).toHaveText('1');
+  await expect(page.locator('#round-number')).toHaveCount(0);
+  await expect(page.locator('#players')).toContainText('drivers');
   const name = (await game(page)).players[0].name;
   await expect(page.locator('#our-name')).toHaveText(name);
   await expect(page.locator('#win-total')).toHaveText('0 total wins');
@@ -168,8 +176,11 @@ test('countdown, spectator queue, core expiry and arena HUD with event feed', as
     expect(box('round-panel').bottom).toBeLessThan(box('power-up-panel').y);
     expect(Math.abs(box('round-panel').cx - box('arena-hud').cx)).toBeLessThan(2);
     expect(Math.abs(box('power-up-panel').cx - box('arena-hud').cx)).toBeLessThan(2);
-    expect(box('arena-hud').y).toBe(box('game').y);
-    expect(box('arena-hud').bottom).toBeLessThanOrEqual(box('game').bottom);
+    const hudInset = width <= 600 ? 16 : 20;
+    expect(box('arena-hud').y - box('game').y).toBe(hudInset);
+    expect(box('arena-hud').x - box('game').x).toBe(hudInset);
+    expect(box('game').bottom - box('arena-hud').bottom).toBe(hudInset);
+    expect(box('game').right - box('arena-hud').right).toBe(hudInset);
     for (const panel of boxes.filter(item => item.id.endsWith('-panel') && item.id !== 'name-panel')) {
       expect(panel.x).toBeGreaterThanOrEqual(box('arena-hud').x);
       expect(panel.right).toBeLessThanOrEqual(box('arena-hud').right);

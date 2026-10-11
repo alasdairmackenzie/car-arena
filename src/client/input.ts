@@ -33,7 +33,8 @@ export class DrivingInput {
     if (document.hidden || !this.arena.contains(document.activeElement)) return idleInput();
     const pressed = (...codes: string[]): number => Number(codes.some(code => this.held.has(code)));
     return {
-      throttle: pressed('KeyW', 'ArrowUp') - pressed('KeyS', 'ArrowDown'),
+      throttle: pressed('KeyS', 'ArrowDown') ? -1
+        : pressed('KeyW', 'ArrowUp', 'KeyA', 'ArrowLeft', 'KeyD', 'ArrowRight'),
       steering: pressed('KeyD', 'ArrowRight') - pressed('KeyA', 'ArrowLeft'),
       handbrake: this.held.has('Space'),
       fire: this.held.has('KeyF'),

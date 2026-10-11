@@ -5,19 +5,35 @@
 Rules, driving controls, pickup explanations and standings live in a pregame
 menu. Join an existing lobby or create one with 1-10 driver slots and AI enabled
 or disabled. **Play** begins the solo playground; loading the page alone does
-not enter a race. **Help / standings** reopens the menu during play
-without leaving or pausing the online round.
+not enter a race. **Game menu** reopens the menu during play without leaving
+or pausing the online round. Its button sits at the bottom-left of the arena,
+with the event feed above it. **Back to game** resumes play; **Back to main menu**
+reloads the client, leaving the current lobby and returning to the lobby picker
+(or the start screen in solo mode).
 
 Driver names, health bars and core progress appear above the cars. A bounded bottom-left arena event feed shows
 round changes, core collection/loss, wrecks, respawns and power-up changes.
 Messages move upward and fade over seven seconds; reduced motion removes the
-scroll animation. The central local-damage warning remains.
+scroll animation. Central local-damage warnings use a bold impact stamp with a
+short scale/rotation bounce, the existing small camera shake, and a fade-out.
+Repeated hits restart the entrance; reduced motion removes the bounce and shake.
+Losing all health replaces the hit warning with **You've been scrapped** while
+the normal respawn countdown continues.
 
 The game now has an after-dark salvage-yard theme: textured asphalt, oil stains,
 cracks, faded road markings, hazard-striped barriers and cyan/violet yard lights.
 Armoured car details, gold-core halos, outlined power-up icons, neon tracers and
-small pickup/impact sparks bring the arena to life. The compact HUD stays flush
-with the arena edges, with health shown as a bar.
+small pickup/impact sparks bring the arena to life. The compact HUD sits inside
+the arena edges with a 20px desktop / 16px mobile inset and fine borders, with
+health shown as a bar.
+
+Desktop play fits the arena to the viewport at its original 8:5 aspect ratio:
+full width when height allows, otherwise height-limited and centered on both
+axes. Container resizes immediately refresh the canvas and camera without
+restarting the round. Mobile retains its full-height, car-following view.
+Errors appear in a modal alert with a **Continue** button (or Escape to dismiss),
+not below the game. Dismissal clears the message and returns focus to the game
+or lobby picker; failed joins can be retried without reloading.
 
 Scenery is decorative: no new obstacles or physics/balance changes. All artwork
 is generated locally with Phaser, with the detailed floor baked once into a
@@ -64,7 +80,7 @@ This is a local prototype, not a hardened public deployment.
 
 - W / Up: accelerate.
 - S / Down: brake by applying reverse thrust, then reverse.
-- A / D or Left / Right: steer.
+- A / D or Left / Right: steer and accelerate. S / Down takes priority for reversing.
 - Space: handbrake.
 - F: hold to fire the forward-facing gun.
 - Manual respawn/reset controls are removed. Wrecks still respawn automatically
@@ -90,7 +106,10 @@ This is a local prototype, not a hardened public deployment.
 - Bots are relaxed opponents: reduced acceleration and continuous core pursuit
   from the start, without roaming, scheduled pauses or a chase time limit.
   They fire in short bursts.
-  They steer and reverse when stuck, using the same physics, damage, respawns
+  They look ahead and steer away from walls. A full second without 24 pixels of
+  progress at low speed triggers 1.25 seconds of reversing, then two seconds
+  steering toward open space. Moving bots have no scheduled reversals or pauses.
+  They use the same physics, damage, respawns
   and five-core win rules as humans.
   Core aiming is deliberately imperfect: each chase uses a stable target
   15-65 pixels left, right, above or below the core, so bots can miss pickups.
@@ -115,7 +134,7 @@ This is a local prototype, not a hardened public deployment.
 - A result freezes collection/combat/movement for a six-second results display,
   then a fresh countdown resets cars, health, cores, power-ups and projectiles.
   A simultaneous pickup is awarded once, by distance then player ID.
-- The HUD overlays the arena grid: timer top-left, round number top-middle,
+- The HUD overlays the arena grid: timer top-left, driver/bot/spectator counts top-middle,
   your score/wins top-right, your randomly assigned name bottom-left,
   active power-ups bottom-middle and health bottom-right.
   Names and total wins last while connected, across rounds; reload loses them.
@@ -163,9 +182,19 @@ Phones and touch screens use a compact layout with instructions/standings in
 an expandable "How to play" section. The camera follows your car at a readable
 scale; a minimap shows cars, cores, pickups and the visible camera area.
 Spectators retain the whole-arena overview. Desktop retains its full-arena view.
+On mobile, power-up status and health sit beneath the direction pad and FIRE
+button; the timer and score remain at the top.
+Desktop also shows FIRE above the health panel; hold it with the mouse or use F.
 
-Drag the left steering pad, hold GO to accelerate or REV to brake/reverse,
-and use FIRE and DRIFT for the gun and handbrake. Multiple touches work together.
+Hold the left direction pad: center/up accelerates, left/right steers and
+accelerates, and down brakes then reverses. Release to coast. There are no
+separate GO/REV or DRIFT buttons. Hold FIRE for the gun alongside the direction
+pad. Hard forward turns automatically reduce rear grip gradually above
+180 px/s, reaching the full subtle effect at 360 px/s with full steering.
+Gentle turns, slow driving, coasting and reversing retain normal grip.
+Straightening up restores grip immediately. Space remains an optional keyboard
+handbrake shortcut; automatic drift does not apply its extra braking.
+Multiple touches work together.
 Releasing/cancelling a touch, leaving the tab or losing window focus clears
 held controls. Controls are disabled while waiting, counting down, respawning
 or spectating. Both portrait and landscape work without changing the shared

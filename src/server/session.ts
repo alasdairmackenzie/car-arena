@@ -1,7 +1,7 @@
 import { ARENA, idleInput, isCarInput, Simulation, STEP_MS, type CarInput, type CarSnapshot } from '../shared/simulation';
 import { POWER_UP_KINDS, RULES, type CoreSnapshot, type GameSnapshot, type PlayerSnapshot, type PowerUpKind, type PowerUpSnapshot, type ProjectileSnapshot, type RoundPhase } from '../shared/game';
 import { distanceToSegment, segmentCarHit } from '../shared/geometry';
-import { botInput } from './bot';
+import { botInput, type BotMemory } from './bot';
 import Matter from 'matter-js';
 import { lobbySettings, type LobbySettings } from '../shared/lobby';
 
@@ -18,6 +18,7 @@ const spawns = [
 
 interface Player {
   bot: boolean;
+  botMemory?: BotMemory;
   damageSequence: number;
   damageReason: string;
   health: number;
@@ -156,7 +157,10 @@ export class ArenaSession {
         if (this.tick >= player.respawnAt) this.respawn(id, player);
         continue;
       }
-      if (player.bot) player.input = botInput(botGame.players.find(other => other.id === id)!, botGame, this.tick);
+      if (player.bot) {
+        player.botMemory ??= {};
+        player.input = botInput(botGame.players.find(other => other.id === id)!, botGame, this.tick, player.botMemory);
+      }
       else if ((this.tick - player.lastInputAt) * STEP_MS >= INPUT_TIMEOUT_MS) player.input = idleInput();
       this.simulation.setInput(id, player.input);
       this.simulation.setEngineMultiplier(id, this.tick < player.boostUntil ? RULES.boostMultiplier : 1);
@@ -276,6 +280,7 @@ export class ArenaSession {
     player.respawnAt = 0;
     player.protectedUntil = this.tick + RULES.protectionTicks;
     player.input = idleInput();
+    player.botMemory = undefined;
     player.pose = { id, ...spawn, angle: -Math.PI / 2, speed: 0, steering: 0 };
   }
 

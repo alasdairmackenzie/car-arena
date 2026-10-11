@@ -1,8 +1,9 @@
 import { describe, expect, it } from 'vitest';
+import Matter from 'matter-js';
 import { ArenaSession, MAX_CONNECTIONS, MAX_PLAYERS } from './session';
 import { RULES } from '../shared/game';
-import { ARENA, isCarInput } from '../shared/simulation';
-import { BOT_BEHAVIOR, botCoreTarget, botInput } from './bot';
+import { ARENA, Simulation, isCarInput } from '../shared/simulation';
+import { BOT_BEHAVIOR, botCoreTarget, botInput, type BotMemory } from './bot';
 
 function session(): ArenaSession {
   let seed = 42;
@@ -17,6 +18,56 @@ function advance(game: ArenaSession, ticks: number): void {
 }
 
 describe('five-driver races with bots', () => {
+  it('only reverses after sustained lack of progress, then finishes its recovery', () => {
+    const game = session();
+    game.join('human');
+    advance(game, RULES.countdownTicks);
+    const snapshot = game.snapshot();
+    const bot = { ...snapshot.players.find(player => player.bot)!, x: 720, y: 450, speed: 0 };
+    const memory: BotMemory = {};
+    for (let tick = 0; tick < BOT_BEHAVIOR.stuckTicks; tick++) {
+      expect(botInput(bot, snapshot, tick, memory).throttle).toBeGreaterThan(0);
+    }
+    expect(botInput(bot, snapshot, BOT_BEHAVIOR.stuckTicks, memory).throttle).toBeLessThan(0);
+    expect(botInput(bot, snapshot, BOT_BEHAVIOR.stuckTicks + BOT_BEHAVIOR.reverseTicks, memory).throttle)
+      .toBeGreaterThan(0);
+    const moving: BotMemory = {};
+    for (let tick = 0; tick < 600; tick++) {
+      expect(botInput({ ...bot, x: 500 + tick % 100, speed: 100 }, snapshot, tick, moving).throttle)
+        .toBeGreaterThan(0);
+    }
+  });
+
+  it.each([
+    [72, 450, Math.PI], [1368, 450, 0], [720, 72, -Math.PI / 2], [720, 828, Math.PI / 2],
+    [72, 72, -3 * Math.PI / 4], [1368, 72, -Math.PI / 4],
+    [72, 828, 3 * Math.PI / 4], [1368, 828, Math.PI / 4],
+  ])('escapes a wall or corner at (%s, %s) using real car physics', (x, y, angle) => {
+    const game = session();
+    game.join('human');
+    advance(game, RULES.countdownTicks);
+    const snapshot = game.snapshot();
+    const bot = snapshot.players.find(player => player.bot)!;
+    const simulation = new Simulation();
+    simulation.addCar(bot.id, x, y);
+    Matter.Body.setAngle(simulation.cars.get(bot.id)!.body, angle);
+    const memory: BotMemory = {};
+    let escaped = false;
+    for (let tick = 0; tick < 600; tick++) {
+      const player = { ...bot, ...simulation.snapshot()[0] };
+      const input = botInput(player, {
+        ...snapshot, players: [player], cores: [{ id: 'edge-core', x, y }], powerUps: [],
+      }, tick, memory);
+      expect(isCarInput(input)).toBe(true);
+      simulation.setInput(bot.id, input);
+      simulation.step();
+      const car = simulation.snapshot()[0];
+      escaped ||= Math.min(car.x - ARENA.wall, ARENA.width - ARENA.wall - car.x,
+        car.y - ARENA.wall, ARENA.height - ARENA.wall - car.y) > 150;
+    }
+    expect(escaped).toBe(true);
+  });
+
   it('aims to varied sides of cores, with stable chase targets and both hits and misses possible', () => {
     const core = { id: 'core-1', x: 720, y: 450 };
     const directions = new Set<string>();

@@ -221,7 +221,10 @@ core drops and respawn. Walls remain non-damaging.
 Phaser resizes to the available canvas. Desktop scales a full-arena camera;
 mobile drivers use a bounded, car-following camera and a small overview minimap.
 Spectators see the full arena. Camera differences are presentation only.
-Touch steering, throttle/reverse, fire and handbrake feed the same validated
+The touch direction pad combines steering with acceleration: center/up and
+left/right drive forward; the lower part brakes and reverses. The FIRE button supports simultaneous touches. Keyboard A/D and left/right
+also accelerate, with S/down taking reverse priority. Releasing the direction
+input stops applying thrust, allowing coasting. These controls feed the same validated
 input as the keyboard, with independent pointer capture for simultaneous touches.
 Cancellation, blur, hidden tabs and gameplay eligibility clear touch input.
 Mobile instructions/standings collapse into a native details element, while
@@ -239,7 +242,11 @@ The first driver spawns randomly with a 100-pixel arena margin; subsequent
 spawns remain separated from occupied car positions.
 
 Bots generate bounded driving/fire controls on the server, seeking nearby cores
-or pickups, firing at aligned opponents and periodically reversing when stalled.
+or pickups and firing at aligned opponents. Speed-scaled wall look-ahead biases
+steering inward before impact. Per-bot progress tracking triggers recovery only
+after one second without 24 pixels of displacement at low speed: reverse for
+75 ticks, then drive toward the arena centre for 120 ticks. Recovery memory resets
+on respawn; there are no timer-based reversals during normal driving.
 They cannot teleport, bypass collision physics or claim pickups/damage; all
 effects, destruction, respawn and scoring share the human gameplay paths.
 This is simple arcade AI, not sophisticated pathfinding or difficulty scaling.

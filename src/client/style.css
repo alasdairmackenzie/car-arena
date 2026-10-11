@@ -1,7 +1,7 @@
 :root { color-scheme: dark; font-family: system-ui, sans-serif; color: #e6eef3; background: #0b1018; }
 * { box-sizing: border-box; }
 body { margin: 0; background: radial-gradient(ellipse at 10% 0, #16303b80, transparent 50%), radial-gradient(ellipse at 100% 20%, #34224060, transparent 55%); }
-main { max-width: 1500px; margin: 0 auto; padding: 24px; }
+main { width: 100%; min-height: 100vh; min-height: 100dvh; display: grid; grid-template-columns: minmax(0, 1fr); place-items: center; }
 header, footer { display: flex; justify-content: space-between; align-items: center; gap: 24px; }
 header { margin-bottom: 20px; }
 h1 { margin: 0; font-size: clamp(24px, 4vw, 38px); letter-spacing: -1px; text-transform: uppercase; font-weight: 900; color: #ecf9ff; text-shadow: 2px 2px 0 #314354, 0 0 24px #67e8f92b; }
@@ -12,17 +12,17 @@ h1 { margin: 0; font-size: clamp(24px, 4vw, 38px); letter-spacing: -1px; text-tr
 #speed { font-size: 24px; font-variant-numeric: tabular-nums; }
 #players { font-size: 12px; color: #9cabb8; }
 #objective { color: #ffd166; font-size: 14px; line-height: 1.6; }
-.arena-wrap { position: relative; box-shadow: 0 0 0 1px #44525d, 0 0 30px #67e8f90c, 0 20px 60px #00000050; border-radius: 6px; }
-#arena-hud { position: absolute; inset: 0; pointer-events: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: auto 1fr auto; gap: 8px; align-items: start; }
+.arena-wrap { min-width: 0; width: min(100%, 160vh); width: min(100%, 160dvh); position: relative; box-shadow: 0 0 0 1px #44525d, 0 0 30px #67e8f90c, 0 20px 60px #00000050; border-radius: 6px; }
+#arena-hud { position: absolute; inset: 20px; pointer-events: none; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); grid-template-rows: auto 1fr auto; gap: 8px; align-items: start; }
 #arena-hud[hidden] { display: none; }
-.timer-panel, .score-panel, .name-panel, .round-panel, .health-panel, .power-up-panel { display: grid; gap: 2px; max-width: 100%; min-width: 0; overflow-wrap: anywhere; padding: 6px 10px; background: linear-gradient(135deg, #1a2530ee, #0b1119ee); border: 1px solid #4b5966; border-top: 2px solid #67e8f9; border-radius: 3px; font-variant-numeric: tabular-nums; box-shadow: 0 3px 12px #00000040; }
+.timer-panel, .score-panel, .name-panel, .round-panel, .health-panel, .power-up-panel { display: grid; gap: 2px; max-width: 100%; min-width: 0; overflow-wrap: anywhere; padding: 6px 10px; background: linear-gradient(135deg, #1a2530ee, #0b1119ee); border: 0.5px solid #4b5966; border-top: 0.5px solid #67e8f9; border-radius: 3px; font-variant-numeric: tabular-nums; box-shadow: 0 3px 12px #00000040; }
 .timer-panel { grid-area: 1 / 1; justify-self: start; }
 .score-panel { grid-area: 1 / 3; justify-self: end; }
-#event-feed { position: absolute; bottom: 8px; left: 10px; width: min(32%, 330px); height: 154px; overflow: hidden; pointer-events: none; mask-image: linear-gradient(transparent, #000 40%, #000); }
+#event-feed { position: absolute; bottom: 64px; left: 20px; width: min(32%, 330px); height: 154px; overflow: hidden; pointer-events: none; mask-image: linear-gradient(transparent, #000 40%, #000); }
 .game-event { position: absolute; bottom: 0; left: 0; width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 4px 6px; border-left: 2px solid #67e8f9; background: #0b1119b8; color: #dfedf4; font: 11px ui-monospace, monospace; line-height: 18px; transition: transform 0.3s ease, opacity 0.3s linear; }
 .round-panel { grid-area: 1 / 2; justify-self: center; text-align: center; }
 #arena-hud #players { max-width: 210px; font-size: 10px; line-height: 1.5; }
-#help { pointer-events: auto; padding: 5px 7px; font-size: 10px; min-height: 28px; }
+#help { grid-area: 3 / 1; justify-self: start; align-self: end; pointer-events: auto; padding: 5px 7px; font-size: 10px; min-height: 28px; border-width: 0.5px; }
 .power-up-panel { grid-area: 3 / 2; justify-self: center; align-self: end; text-align: center; }
 .health-panel { grid-area: 3 / 3; justify-self: end; align-self: end; text-align: right; }
 .score-panel { text-align: right; color: #ffd166; border-top-color: #ffd166; }
@@ -41,14 +41,15 @@ h1 { margin: 0; font-size: clamp(24px, 4vw, 38px); letter-spacing: -1px; text-tr
 #announce[data-kind="results"] #announce-main { font-size: clamp(30px, 5.5vw, 64px); }
 #announce-sub { font-size: clamp(12px, 1.6vw, 16px); color: #c9d6df; }
 #announce-sub:empty { display: none; }
-#damage-flash { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); margin: 0; padding: 10px 16px; max-width: 85%; width: max-content; border-radius: 8px; background: #52262bdd; color: #ffd5d8; font-size: clamp(14px, 2vw, 22px); font-weight: 700; text-align: center; pointer-events: none; z-index: 2; }
+#damage-flash { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); margin: 0; padding: 12px 20px; max-width: 72%; width: max-content; border: 2px solid #ff8c9b; border-radius: 5px; background: #52262bf2; color: #fff0f2; font-size: clamp(18px, 2.4vw, 32px); font-weight: 900; text-transform: uppercase; letter-spacing: 1px; box-shadow: 0 4px 20px #00000080, 0 0 24px #ff647c30; text-align: center; pointer-events: none; z-index: 2; }
+#damage-flash[data-kind="scrapped"] { border-color: #ffd166; color: #ffd166; background: #351c24f2; font-size: clamp(22px, 3vw, 40px); }
 #combat-hud { margin: 16px 0; font-size: 13px; }
 #combat-hud[hidden] { display: none; }
 #combat-hud label { display: block; margin-bottom: 4px; }
 progress { width: 160px; height: 10px; accent-color: #72e4b0; }
 #core-progress { accent-color: #ffd166; max-width: 100%; }
 #standings { margin: 12px 0 0; color: #b4c2cd; }
-#game { width: 100%; aspect-ratio: 8 / 5; max-height: 72vh; max-height: 72dvh; background: #191f25; border-radius: 6px; overflow: hidden; contain: layout paint; }
+#game { width: 100%; aspect-ratio: 8 / 5; background: #191f25; border-radius: 6px; overflow: hidden; contain: layout paint; }
 #game:focus-visible, button:focus-visible { outline: 3px solid #72e4b0; outline-offset: 4px; }
 #game canvas { display: block; }
 footer { margin-top: 18px; }
@@ -60,6 +61,7 @@ footer p { font-size: 13px; line-height: 2; margin: 0; color: #b4c2cd; }
 #game-menu h3 { font-size: 12px; text-transform: uppercase; letter-spacing: 2px; color: #67e8f9; margin-top: 24px; }
 #menu-note { font-size: 13px; line-height: 1.6; color: #b4c2cd; }
 #play { width: 100%; border-color: #72e4b0; font-weight: 700; }
+#main-menu { width: 100%; margin-top: 8px; }
 #lobby-picker { margin-top: 8px; }
 .lobby-head { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
 .lobby-head h3 { margin: 0; }
@@ -81,15 +83,25 @@ button.quiet { padding: 6px 12px; font-size: 12px; }
 .playing header { margin-bottom: 10px; }
 .playing h1 { font-size: clamp(20px, 3vw, 28px); }
 .playing header .eyebrow, .playing .tagline, .playing #mode, .playing #speed { display: none; }
-#touch-controls, #minimap { display: none; }
+#minimap { display: none; }
+#touch-controls { display: flex; position: absolute; bottom: 80px; right: 20px; pointer-events: none; }
+.steering-controls { display: none; }
+#touch-controls button { width: 96px; min-height: 64px; pointer-events: auto; touch-action: none; user-select: none; -webkit-user-select: none; font-size: 16px; font-weight: 900; background: #101820dd; }
+#touch-controls button.pressed { background: #72e4b0; color: #101820; }
 kbd { font: inherit; padding: 2px 6px; background: #273744; border: 1px solid #465b6b; border-radius: 4px; }
 button { cursor: pointer; border: 1px solid #65717e; background: linear-gradient(135deg, #28343f, #17212b); color: #e6eef3; border-radius: 4px; padding: 12px 18px; font: inherit; }
 button:hover { background: #344956; border-color: #67e8f9; }
 button:disabled { cursor: not-allowed; opacity: 0.5; }
 #status { color: #9cabb8; font-size: 13px; }
 #error { padding: 12px; background: #52262b; color: #ffd5d8; border-radius: 8px; }
+#error-dialog { width: min(460px, calc(100% - 32px)); max-height: calc(100vh - 32px); max-height: calc(100dvh - 32px); overflow-y: auto; padding: 24px; color: #e6eef3; background: #111c27; border: 1px solid #ff8c9b; border-radius: 8px; box-shadow: 0 0 40px #ff8c9b1a; }
+#error-dialog::backdrop { background: #050912cc; }
+#error-title { margin: 0; font-size: 22px; }
+#error { overflow-wrap: anywhere; line-height: 1.5; }
+#error-continue { width: 100%; min-height: 44px; border-color: #ff8c9b; }
 @media (max-width: 600px), (pointer: coarse) {
   main { padding: max(6px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left)); }
+  .arena-wrap { width: 100%; }
   header { margin-bottom: 4px; gap: 8px; }
   h1 { font-size: 20px; letter-spacing: 0; }
   .eyebrow, #mode, #speed { display: none; }
@@ -98,28 +110,28 @@ button:disabled { cursor: not-allowed; opacity: 0.5; }
   #game-menu { padding: 18px; }
   #game-menu .eyebrow { display: block; }
   #game { aspect-ratio: auto; height: calc(100vh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); height: calc(100dvh - 16px - env(safe-area-inset-top) - env(safe-area-inset-bottom)); max-height: none; }
-  #arena-hud { inset: 0 0 128px; gap: 4px; }
+  #arena-hud { inset: 16px; gap: 4px; }
   #arena-hud > div { padding: 5px 6px; gap: 2px; }
   #arena-hud span, .health-panel label { font-size: 7px; }
   #arena-hud strong { font-size: 12px; }
   #arena-hud progress { width: 76px; }
   #arena-hud #players { font-size: 8px; }
   #help { min-height: 32px; padding: 4px; font-size: 9px; }
-  #event-feed { bottom: 136px; left: 6px; width: 31%; height: 130px; }
+  #event-feed { bottom: 204px; left: 6px; width: 31%; height: 130px; }
   .game-event { font-size: 9px; }
   #win-total { font-size: 9px; }
   #banner { top: 65px; font-size: 12px; padding: 6px 10px; }
   #announce { padding: 12px 20px; }
   #minimap { display: block; position: absolute; top: 104px; right: 8px; width: 96px; height: 60px; border: 1px solid #9cabb8; border-radius: 4px; pointer-events: none; }
-  #touch-controls { display: flex; position: absolute; bottom: 10px; left: 12px; right: 12px; justify-content: space-between; align-items: end; gap: 16px; pointer-events: none; }
+  #touch-controls { display: flex; position: absolute; bottom: 80px; left: 16px; right: 16px; justify-content: space-between; align-items: start; gap: 16px; pointer-events: none; }
   #touch-controls button, #steering-pad { touch-action: none; user-select: none; -webkit-user-select: none; pointer-events: auto; }
   .steering-controls { display: grid; gap: 4px; text-align: center; font-size: 10px; color: #b4c2cd; }
   #steering-pad { width: 96px; height: 96px; border: 2px solid #72e4b0; background: #101820bb; border-radius: 50%; display: grid; place-items: center; }
   #steering-pad:focus-visible { outline: 3px solid #ffd166; outline-offset: 3px; }
   #steering-pad[aria-disabled="true"] { opacity: 0.5; }
   #steering-knob { width: 36px; height: 36px; border-radius: 50%; background: #72e4b0; pointer-events: none; }
-  .pedal-controls { display: grid; grid-template-columns: repeat(2, 56px); gap: 6px; }
-  #touch-controls button { min-height: 48px; padding: 8px 4px; font-size: 11px; font-weight: 700; background: #101820dd; }
+  .pedal-controls { display: grid; grid-template-columns: 96px; gap: 6px; }
+  #touch-controls button { min-height: 96px; padding: 12px; font-size: 16px; font-weight: 900; background: #101820dd; }
   #touch-controls button.pressed { background: #72e4b0; color: #101820; }
   footer { margin-top: 8px; }
   #reset { padding: 8px 12px; font-size: 12px; }

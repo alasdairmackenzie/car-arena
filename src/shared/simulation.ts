@@ -14,7 +14,20 @@ export const HANDLING = {
   handbrakeResistance: 0.0011,
   steeringAngle: 0.48,
   drag: 0.008,
+  driftStartSpeed: 180,
+  driftFullSpeed: 360,
+  driftStartSteering: 0.65,
+  driftRearGrip: 0.0012,
 };
+
+export function automaticDrift(speed: number, steering: number, throttle: number): number {
+  if (throttle <= 0) return 0;
+  const speedFactor = Math.max(0, Math.min(1,
+    (speed - HANDLING.driftStartSpeed) / (HANDLING.driftFullSpeed - HANDLING.driftStartSpeed)));
+  const steeringFactor = Math.max(0, Math.min(1,
+    (Math.abs(steering) - HANDLING.driftStartSteering) / (1 - HANDLING.driftStartSteering)));
+  return speedFactor * steeringFactor;
+}
 
 export interface CarInput {
   throttle: number;
@@ -128,6 +141,8 @@ export class Simulation {
   private applyTyreForces({ body, input, engineMultiplier }: Vehicle): void {
     const velocity = Body.getVelocity(body);
     const angularVelocity = Body.getAngularVelocity(body);
+    const forwardSpeed = (velocity.x * Math.cos(body.angle) + velocity.y * Math.sin(body.angle)) * 60;
+    const drift = automaticDrift(forwardSpeed, input.steering, input.throttle);
     for (const longitudinal of [-22, 22]) {
       for (const lateral of [-12, 12]) {
         const rear = longitudinal < 0;
@@ -140,7 +155,9 @@ export class Simulation {
         const heading = body.angle + (rear ? 0 : input.steering * HANDLING.steeringAngle);
         const forward = { x: Math.cos(heading), y: Math.sin(heading) };
         const sideways = { x: -forward.y, y: forward.x };
-        const grip = rear && input.handbrake ? HANDLING.handbrakeGrip : HANDLING.lateralGrip;
+        const grip = rear && input.handbrake ? HANDLING.handbrakeGrip
+          : rear ? HANDLING.lateralGrip + (HANDLING.driftRearGrip - HANDLING.lateralGrip) * drift
+          : HANDLING.lateralGrip;
         const rolling = rear && input.handbrake ? HANDLING.handbrakeResistance : HANDLING.rollingResistance;
         const along = Vector.dot(pointVelocity, forward);
         const across = Vector.dot(pointVelocity, sideways);
